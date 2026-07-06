@@ -19,5 +19,5 @@ def test_enabled_modules_is_empty_list():
 
 
 def test_host_and_port_defaults():
-    assert isinstance(config.HOST, str)
-    assert isinstance(config.PORT, int)
+    assert config.HOST == "127.0.0.1"
+    assert config.PORT == 8000
