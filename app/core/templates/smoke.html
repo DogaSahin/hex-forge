@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hexforge — smoke test</title>
+    <script src="/static/vendor/htmx.min.js" defer></script>
+    <script src="/static/vendor/alpine.min.js" defer></script>
+  </head>
+  <body>
+    <h1>Hexforge smoke test</h1>
+
+    <section>
+      <h2>HTMX swap</h2>
+      <button hx-get="/smoke/fragment" hx-target="#htmx-slot" hx-swap="innerHTML">
+        Load fragment
+      </button>
+      <div id="htmx-slot"><em>not loaded yet</em></div>
+    </section>
+
+    <section x-data="{ count: {{ count_start }} }">
+      <h2>Alpine counter</h2>
+      <button @click="count++">Increment</button>
+      <span x-text="count"></span>
+    </section>
+  </body>
+</html>
