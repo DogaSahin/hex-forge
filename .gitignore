@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Hexforge runtime state (SQLite DB + uploaded media) — never commit
+/data/
