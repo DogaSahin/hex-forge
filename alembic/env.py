@@ -1,6 +1,7 @@
 # hex-forge/alembic/env.py
 from __future__ import annotations
 
+import os
 import sys
 from logging.config import fileConfig
 from pathlib import Path
@@ -13,10 +14,14 @@ from alembic import context
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.core import config as app_config  # noqa: E402
+from app.core import models  # noqa: E402,F401  (register tables on Base.metadata)
 from app.core.database import Base  # noqa: E402
 
 config = context.config
-config.set_main_option("sqlalchemy.url", app_config.DB_URL)
+config.set_main_option(
+    "sqlalchemy.url",
+    os.environ.get("HEXFORGE_DB_URL", app_config.DB_URL),
+)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
