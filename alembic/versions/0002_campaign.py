@@ -22,7 +22,12 @@ def upgrade() -> None:
         "campaign",
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("name", sa.String(length=200), nullable=False),
-        sa.Column("created_at", sa.DateTime(), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
         sa.Column("active", sa.Boolean(), nullable=False, server_default=sa.false()),
     )
     op.bulk_insert(
