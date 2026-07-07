@@ -106,3 +106,18 @@ body.app {
 }
 .hp-bar[data-band="mid"]::after  { background: var(--warning); }
 .hp-bar[data-band="low"]::after  { background: var(--danger); }
+
+/* ---- Command palette (1.23, 1.24) — Ctrl-K modal + stub search ---- */
+[x-cloak] { display: none !important; }
+.palette-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); }
+.palette-modal {
+  position: fixed; top: 15vh; left: 50%; transform: translateX(-50%);
+  width: min(560px, 92vw); background: var(--surface-1);
+  border: 0.5px solid var(--border); border-radius: var(--radius); padding: var(--pad-3);
+}
+.palette-input { width: 100%; padding: var(--pad-2) var(--pad-3); font: inherit;
+  background: var(--surface-2); color: var(--text-default); border: 0.5px solid var(--border);
+  border-radius: var(--radius); }
+.palette-result { display: block; padding: var(--pad-2) var(--pad-3); color: var(--text-default);
+  text-decoration: none; }
+.palette-result:hover { background: var(--surface-2); }

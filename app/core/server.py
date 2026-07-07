@@ -11,6 +11,7 @@ from fastapi.templating import Jinja2Templates
 from app.core import config
 from app.core.campaigns import COOKIE_NAME, get_active_campaign, list_campaigns
 from app.core.database import SessionLocal
+from app.core.palette import search_index
 from app.core.registry import NavItem, Registry
 from app.core.websocket import manager
 
@@ -73,6 +74,11 @@ def create_app() -> FastAPI:
         resp = RedirectResponse(url="/", status_code=303)
         resp.set_cookie(COOKIE_NAME, campaign_id, httponly=True, samesite="lax")
         return resp
+
+    @app.get("/palette/search", response_class=HTMLResponse)
+    def palette_search(request: Request, q: str = "") -> HTMLResponse:
+        results = search_index(request.app.state.registry, q)
+        return templates.TemplateResponse(request, "_palette_results.html", {"results": results})
 
     @app.get("/health")
     def health() -> dict[str, str]:
