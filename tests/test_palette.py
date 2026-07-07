@@ -22,6 +22,14 @@ def test_empty_query_returns_all_entries():
     assert "/_demo" in resp.text
 
 
+def test_no_match_query_renders_empty_state():
+    resp = client.get("/palette/search", params={"q": "zzzzz"})
+    assert resp.status_code == 200
+    assert "No matches" in resp.text
+    assert "/style" not in resp.text
+    assert "/_demo" not in resp.text
+
+
 def test_palette_modal_present_on_shell():
     resp = client.get("/")
     body = resp.text
