@@ -9,10 +9,7 @@ from app.core.models import Campaign
 COOKIE_NAME = "hexforge_campaign_id"
 
 
-def get_active_campaign(
-    request: Request,
-    db: Session = Depends(get_db),  # noqa: B008 — FastAPI dependency-injection default
-) -> Campaign | None:
+def get_active_campaign(request: Request, db: Session = Depends(get_db)) -> Campaign | None:
     raw = request.cookies.get(COOKIE_NAME)
     campaign: Campaign | None = None
     if raw and raw.isdigit():
