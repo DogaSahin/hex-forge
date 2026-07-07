@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Form, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -12,6 +12,7 @@ from app.core import config
 from app.core.campaigns import COOKIE_NAME, get_active_campaign, list_campaigns
 from app.core.database import SessionLocal
 from app.core.registry import NavItem, Registry
+from app.core.websocket import manager
 
 CORE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = CORE_DIR / "static"
@@ -84,5 +85,18 @@ def create_app() -> FastAPI:
     @app.get("/smoke/fragment", response_class=HTMLResponse)
     def smoke_fragment() -> HTMLResponse:
         return HTMLResponse("<p id='swapped'>Swapped by HTMX ✔</p>")
+
+    @app.websocket("/ws")
+    async def ws_endpoint(websocket: WebSocket, topic: str = "broadcast") -> None:
+        await websocket.accept()
+        manager.subscribe(topic, websocket)
+        try:
+            while True:
+                message = await websocket.receive_json()
+                await manager.publish(message.get("topic", topic), message)
+        except WebSocketDisconnect:
+            pass
+        finally:
+            manager.unsubscribe(websocket)
 
     return app
