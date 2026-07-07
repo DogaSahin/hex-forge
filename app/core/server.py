@@ -3,12 +3,14 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.core import config
+from app.core.campaigns import COOKIE_NAME, get_active_campaign, list_campaigns
+from app.core.database import SessionLocal
 from app.core.registry import NavItem, Registry
 
 CORE_DIR = Path(__file__).resolve().parent
@@ -24,10 +26,19 @@ def shell_context(request: Request) -> dict:
         NavItem(label="Home", icon="home", url="/", order=0),
         *registry.sorted_nav(),
     ]
-    return {
-        "nav_items": nav_items,
-        "current_path": request.url.path,
-    }
+    db = SessionLocal()
+    try:
+        campaigns = list_campaigns(db)
+        active = get_active_campaign(request, db)
+        # detach ids/names the template needs before the session closes
+        return {
+            "nav_items": nav_items,
+            "current_path": request.url.path,
+            "campaigns": [{"id": c.id, "name": c.name} for c in campaigns],
+            "active_campaign": {"id": active.id, "name": active.name} if active else None,
+        }
+    finally:
+        db.close()
 
 
 def build_registry() -> Registry:
@@ -55,6 +66,12 @@ def create_app() -> FastAPI:
     @app.get("/style", response_class=HTMLResponse)
     def style(request: Request) -> HTMLResponse:
         return templates.TemplateResponse(request, "style.html", shell_context(request))
+
+    @app.post("/campaign/switch")
+    def switch_campaign(campaign_id: str = Form(...)) -> RedirectResponse:
+        resp = RedirectResponse(url="/", status_code=303)
+        resp.set_cookie(COOKIE_NAME, campaign_id, httponly=True, samesite="lax")
+        return resp
 
     @app.get("/health")
     def health() -> dict[str, str]:
