@@ -49,3 +49,67 @@ def test_whitespace_and_case_insensitive():
 def test_invalid_expressions_raise(expr):
     with pytest.raises(DiceError):
         parser.evaluate(expr, ScriptedRandom([1] * 10))
+
+
+class AlwaysMax(random.Random):
+    def randint(self, a, b):  # noqa: ARG002
+        return b
+
+
+def test_keep_highest():
+    result = parser.evaluate("4d6kh3", ScriptedRandom([1, 2, 3, 4]))
+    assert result.total == 9  # 4+3+2
+    assert result.terms[0].kept == [2, 3, 4]  # kept in roll order; the 1 is dropped
+    assert result.terms[0].discarded == [1]
+
+
+def test_keep_lowest():
+    result = parser.evaluate("4d6kl2", ScriptedRandom([1, 2, 3, 4]))
+    assert result.total == 3  # 1+2
+    assert sorted(result.terms[0].kept) == [1, 2]
+
+
+def test_drop_lowest_and_highest():
+    low = parser.evaluate("4d6dl1", ScriptedRandom([1, 2, 3, 4]))
+    assert low.total == 9 and low.terms[0].discarded == [1]
+    high = parser.evaluate("2d20dh1", ScriptedRandom([5, 17]))
+    assert high.total == 5 and high.terms[0].discarded == [17]
+
+
+def test_advantage_keeps_higher():
+    result = parser.evaluate("1d20adv", ScriptedRandom([7, 15]))
+    assert result.total == 15
+
+
+def test_disadvantage_keeps_lower():
+    result = parser.evaluate("1d20dis", ScriptedRandom([7, 15]))
+    assert result.total == 7
+
+
+def test_advantage_on_multi_die_raises():
+    with pytest.raises(DiceError):
+        parser.evaluate("2d20adv", ScriptedRandom([1, 2]))
+
+
+def test_reroll_once():
+    # pool [1,1,3,4]; the two 1s reroll to 6 and 2
+    result = parser.evaluate("4d6r1", ScriptedRandom([1, 1, 3, 4, 6, 2]))
+    assert result.total == 15  # 6+2+3+4
+    assert result.terms[0].discarded == [1, 1]
+
+
+def test_explode_adds_dice_on_max():
+    # 6 explodes -> extra die 4 (not max) stops
+    result = parser.evaluate("3d6!", ScriptedRandom([6, 2, 3, 4]))
+    assert result.total == 15
+    assert result.terms[0].kept == [6, 2, 3, 4]
+
+
+def test_explode_is_capped():
+    result = parser.evaluate("1d2!", AlwaysMax())
+    assert len(result.terms[0].kept) == parser.MAX_EXPLOSIONS + 1
+
+
+def test_keep_more_than_rolled_raises():
+    with pytest.raises(DiceError):
+        parser.evaluate("2d6kh5", ScriptedRandom([1, 2]))

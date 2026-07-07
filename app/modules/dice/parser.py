@@ -74,17 +74,89 @@ def _eval_dice(term: str, rng: random.Random) -> tuple[list[int], list[int], int
     if sides > MAX_SIDES:
         raise DiceError(f"too many sides (max {MAX_SIDES}): {term!r}")
 
-    # Modifier application is added in Task 3; Task 2 supports plain NdM only.
-    if mods:
-        raise DiceError(f"unsupported modifier in {term!r}")
+    reroll_val: int | None = None
+    explode = False
+    keep: tuple[str, int] | None = None
+    adv: str | None = None
+    for mod in mods:
+        if mod[:2] in ("kh", "kl", "dh", "dl"):
+            keep = (mod[:2], _mod_value(mod, 2))
+        elif mod[0] == "r":
+            reroll_val = _mod_value(mod, 1)
+        elif mod == "!":
+            explode = True
+        elif mod in ("adv", "dis"):
+            adv = mod
+
+    if adv is not None:
+        if count != 1:
+            raise DiceError(f"adv/dis applies to a single die only: {term!r}")
+        count = 2
+        keep = ("kh", 1) if adv == "adv" else ("kl", 1)
 
     if count < 1:
         raise DiceError(f"dice count must be >= 1: {term!r}")
     if count > MAX_DICE:
         raise DiceError(f"too many dice (max {MAX_DICE}): {term!r}")
 
-    pool = [rng.randint(1, sides) for _ in range(count)]
-    return pool, [], sum(pool)
+    def roll_one() -> int:
+        return rng.randint(1, sides)
+
+    pool = [roll_one() for _ in range(count)]
+    discarded: list[int] = []
+
+    # 1) reroll once
+    if reroll_val is not None:
+        rerolled: list[int] = []
+        for value in pool:
+            if value == reroll_val:
+                discarded.append(value)
+                rerolled.append(roll_one())
+            else:
+                rerolled.append(value)
+        pool = rerolled
+
+    # 2) explode (depth-capped per original die)
+    if explode:
+        queue = list(pool)
+        exploded: list[int] = []
+        budget = MAX_EXPLOSIONS * count
+        while queue:
+            value = queue.pop(0)
+            exploded.append(value)
+            if value == sides and budget > 0:
+                budget -= 1
+                queue.append(roll_one())
+        pool = exploded
+
+    # 3) keep / drop
+    kept = pool
+    if keep is not None:
+        mode, n = keep
+        if n > len(pool):
+            raise DiceError(f"cannot {mode}{n} of {len(pool)} dice: {term!r}")
+        ordered = sorted(pool, reverse=True)  # high -> low
+        if mode == "kh":
+            survivors = ordered[:n]
+        elif mode == "kl":
+            survivors = ordered[len(ordered) - n :]
+        elif mode == "dh":
+            survivors = ordered[n:]
+        else:  # "dl"
+            survivors = ordered[: len(ordered) - n]
+
+        from collections import Counter
+
+        want = Counter(survivors)
+        kept = []
+        for value in pool:
+            if want[value] > 0:
+                want[value] -= 1
+                kept.append(value)
+            else:
+                discarded.append(value)
+
+    return kept, discarded, sum(kept)
 
 
 def evaluate(expression: str, rng: random.Random | None = None) -> RollResult:
