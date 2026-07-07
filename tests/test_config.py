@@ -14,8 +14,8 @@ def test_db_url_targets_data_dir():
     assert config.DB_URL.endswith("hexforge.db")
 
 
-def test_enabled_modules_is_empty_list():
-    assert config.ENABLED_MODULES == []
+def test_enabled_modules_contains_demo():
+    assert "app.modules._demo" in config.ENABLED_MODULES
 
 
 def test_host_and_port_defaults():

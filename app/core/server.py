@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+
+from app.core import config
+from app.core.registry import Registry
 
 CORE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = CORE_DIR / "static"
@@ -14,8 +18,21 @@ TEMPLATES_DIR = CORE_DIR / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
+def build_registry() -> Registry:
+    registry = Registry()
+    for dotted_path in config.ENABLED_MODULES:
+        module = importlib.import_module(dotted_path)
+        module.register(registry)
+    return registry
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="Hexforge")
+
+    registry = build_registry()
+    app.state.registry = registry
+    for router in registry.routers:
+        app.include_router(router)
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
