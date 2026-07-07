@@ -9,13 +9,25 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.core import config
-from app.core.registry import Registry
+from app.core.registry import NavItem, Registry
 
 CORE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = CORE_DIR / "static"
 TEMPLATES_DIR = CORE_DIR / "templates"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+
+def shell_context(request: Request) -> dict:
+    registry = request.app.state.registry
+    nav_items = [
+        NavItem(label="Home", icon="home", url="/", order=0),
+        *registry.sorted_nav(),
+    ]
+    return {
+        "nav_items": nav_items,
+        "current_path": request.url.path,
+    }
 
 
 def build_registry() -> Registry:
@@ -35,6 +47,10 @@ def create_app() -> FastAPI:
         app.include_router(router)
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+    @app.get("/", response_class=HTMLResponse)
+    def home(request: Request) -> HTMLResponse:
+        return templates.TemplateResponse(request, "home.html", shell_context(request))
 
     @app.get("/health")
     def health() -> dict[str, str]:
