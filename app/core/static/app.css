@@ -1,0 +1,123 @@
+/* app/core/static/app.css — Hexforge design system (spec §8). Dark default. */
+
+/* ---- Tokens (1.5) ---- */
+:root {
+  --surface-0: #14161a;   /* page (darkest) */
+  --surface-1: #1c1f26;   /* card */
+  --surface-2: #242832;   /* panel */
+  --text-default: #e7e9ee;
+  --text-muted: #9aa1ad;
+  --border: rgba(255, 255, 255, 0.10);
+
+  --accent: #3d7dff;      /* blue = primary action */
+  --warning: #e0a54a;     /* amber = brand / active / wary */
+  --danger: #d15b5b;      /* red = hostile / low HP */
+  --success: #5aa46a;     /* green = friendly / full HP */
+  --pro: #9a7bd0;         /* purple = conditions */
+
+  --pad-1: 4px; --pad-2: 8px; --pad-3: 12px; --pad-4: 16px;
+  --gap-1: 4px; --gap-2: 8px; --gap-3: 12px;
+  --radius: 6px;
+}
+
+* { box-sizing: border-box; }
+body.app {
+  margin: 0;
+  display: flex;
+  min-height: 100vh;
+  background: var(--surface-0);
+  color: var(--text-default);
+  font: 400 14px/1.5 system-ui, sans-serif;
+}
+
+/* ---- Shell layout (§8.2) ---- */
+.nav-rail {
+  width: 78px; flex: 0 0 78px;
+  background: var(--surface-1);
+  border-right: 0.5px solid var(--border);
+  display: flex; flex-direction: column; align-items: center;
+  gap: var(--gap-2); padding: var(--pad-2) 0;
+}
+.brand-tile {
+  display: grid; place-items: center;
+  width: 44px; height: 44px;
+  background: var(--surface-2); border-radius: 10px;
+}
+.nav-item {
+  width: 100%; text-align: center; padding: var(--pad-2) 0;
+  color: var(--text-muted); text-decoration: none; font-size: 11px;
+  border-left: 2px solid transparent;
+}
+.nav-item.is-active { color: var(--warning); border-left-color: var(--warning); }
+.app-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  height: 48px; flex: 0 0 48px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--pad-4);
+  background: var(--surface-1); border-bottom: 0.5px solid var(--border);
+}
+.content { padding: var(--pad-4); overflow: auto; }
+
+/* ---- Buttons (1.6) ---- */
+.btn {
+  font: inherit; cursor: pointer;
+  padding: var(--pad-2) var(--pad-3); border-radius: var(--radius);
+  background: var(--surface-2); color: var(--text-default);
+  border: 0.5px solid var(--border);
+}
+.btn-primary { background: var(--accent); border-color: transparent; color: #fff; }
+
+/* ---- Cards + panels (1.7) ---- */
+.card, .panel {
+  background: var(--surface-1); border: 0.5px solid var(--border);
+  border-radius: var(--radius); padding: var(--pad-4);
+}
+.panel { background: var(--surface-2); }
+
+/* ---- List rows + active (1.8) ---- */
+.row {
+  display: flex; align-items: center; gap: var(--gap-2);
+  padding: var(--pad-2) var(--pad-3);
+  border-bottom: 0.5px solid var(--border);
+}
+.row.is-active { background: rgba(224, 165, 74, 0.12); box-shadow: inset 2px 0 0 var(--warning); }
+
+/* ---- Chips + disposition badges (1.9, §8.4) ---- */
+.chip {
+  display: inline-block; padding: 2px var(--pad-2); border-radius: 999px;
+  font-size: 12px; background: rgba(154, 123, 208, 0.18); color: var(--pro);
+}
+.badge-hostile  { color: var(--danger);  background: rgba(209, 91, 91, 0.16); }
+.badge-wary     { color: var(--warning); background: rgba(224, 165, 74, 0.16); }
+.badge-friendly { color: var(--success); background: rgba(90, 164, 106, 0.16); }
+.badge-hostile, .badge-wary, .badge-friendly {
+  display: inline-block; padding: 2px var(--pad-2); border-radius: 999px; font-size: 12px;
+}
+
+/* ---- HP bar + progress (1.10) — shade green->amber->red by --ratio ---- */
+.progress, .hp-bar {
+  position: relative; height: 10px; border-radius: 999px;
+  background: var(--surface-2); overflow: hidden;
+}
+.hp-bar::after, .progress::after {
+  content: ""; position: absolute; inset: 0;
+  width: calc(var(--ratio, 1) * 100%);
+  background: var(--success);
+}
+.hp-bar[data-band="mid"]::after  { background: var(--warning); }
+.hp-bar[data-band="low"]::after  { background: var(--danger); }
+
+/* ---- Command palette (1.23, 1.24) — Ctrl-K modal + stub search ---- */
+[x-cloak] { display: none !important; }
+.palette-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); }
+.palette-modal {
+  position: fixed; top: 15vh; left: 50%; transform: translateX(-50%);
+  width: min(560px, 92vw); background: var(--surface-1);
+  border: 0.5px solid var(--border); border-radius: var(--radius); padding: var(--pad-3);
+}
+.palette-input { width: 100%; padding: var(--pad-2) var(--pad-3); font: inherit;
+  background: var(--surface-2); color: var(--text-default); border: 0.5px solid var(--border);
+  border-radius: var(--radius); }
+.palette-result { display: block; padding: var(--pad-2) var(--pad-3); color: var(--text-default);
+  text-decoration: none; }
+.palette-result:hover { background: var(--surface-2); }

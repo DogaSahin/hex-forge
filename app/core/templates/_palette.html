@@ -1,0 +1,13 @@
+{# app/core/templates/_palette.html #}
+<div id="palette" x-data="{ open: false }"
+     @keydown.window.ctrl.k.prevent="open = true; $nextTick(() => $refs.q.focus())"
+     @keydown.escape.window="open = false">
+  <div class="palette-backdrop" x-show="open" @click="open = false" x-cloak></div>
+  <div class="palette-modal" x-show="open" x-cloak role="dialog" aria-modal="true"
+       @keydown.tab.prevent="$refs.q.focus()">
+    <input x-ref="q" class="palette-input" type="text" placeholder="Jump to anything…"
+           name="q" hx-get="/palette/search" hx-trigger="keyup changed delay:150ms, load"
+           hx-target="#palette-results">
+    <div id="palette-results">{% include "_palette_results.html" %}</div>
+  </div>
+</div>

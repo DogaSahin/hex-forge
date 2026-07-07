@@ -1,0 +1,39 @@
+{# app/core/templates/style.html #}
+{% extends "base.html" %}
+{% block title %}Style — Hexforge{% endblock %}
+{% block content %}
+  <h1>Design system</h1>
+
+  <section class="card">
+    <h2>Buttons</h2>
+    <button class="btn">Default</button>
+    <button class="btn btn-primary">Primary action</button>
+  </section>
+
+  <section class="panel">
+    <h2>Panel</h2>
+    <div class="card">Nested card on a panel.</div>
+  </section>
+
+  <section class="card">
+    <h2>List rows</h2>
+    <div class="row is-active">Active row</div>
+    <div class="row">Row two</div>
+  </section>
+
+  <section class="card">
+    <h2>Chips &amp; disposition badges</h2>
+    <span class="chip">Concentrating</span>
+    <span class="badge-hostile">Hostile</span>
+    <span class="badge-wary">Wary</span>
+    <span class="badge-friendly">Friendly</span>
+  </section>
+
+  <section class="card">
+    <h2>HP &amp; progress</h2>
+    <div class="hp-bar" data-band="full" style="--ratio: 1"></div>
+    <div class="hp-bar" data-band="mid" style="--ratio: 0.5"></div>
+    <div class="hp-bar" data-band="low" style="--ratio: 0.2"></div>
+    <div class="progress" style="--ratio: 0.6"></div>
+  </section>
+{% endblock %}

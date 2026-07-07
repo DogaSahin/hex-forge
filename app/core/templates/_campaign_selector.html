@@ -1,0 +1,11 @@
+{# app/core/templates/_campaign_selector.html #}
+<form id="campaign-selector" class="campaign-selector"
+      method="post" action="/campaign/switch">
+  <select name="campaign_id" onchange="this.form.submit()" class="btn">
+    {% for c in campaigns %}
+      <option value="{{ c.id }}" {% if active_campaign and c.id == active_campaign.id %}selected{% endif %}>
+        {{ c.name }}
+      </option>
+    {% endfor %}
+  </select>
+</form>

@@ -1,0 +1,8 @@
+{# app/core/templates/_palette_results.html #}
+<ul class="palette-results" role="listbox">
+  {% for r in results %}
+    <li role="option"><a class="palette-result" href="{{ r.url }}">{{ r.label }}</a></li>
+  {% else %}
+    <li class="palette-empty">No matches</li>
+  {% endfor %}
+</ul>

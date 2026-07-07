@@ -1,0 +1,18 @@
+{# app/core/templates/_nav.html #}
+<nav id="nav-rail" class="nav-rail">
+  <a class="brand" href="/" title="Hexforge">
+    <span class="brand-tile">
+      <svg viewBox="0 0 30 30" width="26" height="26" aria-hidden="true">
+        <polygon points="15,3 26,10.5 26,19.5 15,27 4,19.5 4,10.5"
+                 fill="none" stroke="var(--warning)" stroke-width="1.2"/>
+        <path d="M15 10 L19 15 L16 15 L18 21 L11 14 L14 14 Z" fill="var(--warning)"/>
+      </svg>
+    </span>
+  </a>
+  {% for item in nav_items %}
+    {% set active = (current_path == item.url) if item.url == "/" else current_path.startswith(item.url) %}
+    <a class="nav-item{% if active %} is-active{% endif %}" href="{{ item.url }}">
+      <span class="nav-label">{{ item.label }}</span>
+    </a>
+  {% endfor %}
+</nav>

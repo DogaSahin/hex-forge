@@ -1,0 +1,26 @@
+{# app/core/templates/base.html #}
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Hexforge{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/vendor/htmx.min.js" defer></script>
+  <script src="/static/vendor/alpine.min.js" defer></script>
+  <script src="/static/ws.js" defer></script>
+</head>
+<body class="app">
+  {% include "_nav.html" %}
+  <div class="app-main">
+    <header class="topbar">
+      <div class="topbar-left"></div>
+      <div class="topbar-actions">{% block topbar_actions %}{% include "_campaign_selector.html" %}{% endblock %}</div>
+    </header>
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  {% include "_palette.html" %}
+</body>
+</html>
