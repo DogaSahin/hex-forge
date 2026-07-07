@@ -9,10 +9,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.core import config
-from app.core.campaigns import COOKIE_NAME, get_active_campaign, list_campaigns
-from app.core.database import SessionLocal
+from app.core.campaigns import COOKIE_NAME
 from app.core.palette import search_index
-from app.core.registry import NavItem, Registry
+from app.core.registry import Registry
+from app.core.templating import shell_context
 from app.core.websocket import manager
 
 CORE_DIR = Path(__file__).resolve().parent
@@ -20,27 +20,6 @@ STATIC_DIR = CORE_DIR / "static"
 TEMPLATES_DIR = CORE_DIR / "templates"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-
-
-def shell_context(request: Request) -> dict:
-    registry = request.app.state.registry
-    nav_items = [
-        NavItem(label="Home", icon="home", url="/", order=0),
-        *registry.sorted_nav(),
-    ]
-    db = SessionLocal()
-    try:
-        campaigns = list_campaigns(db)
-        active = get_active_campaign(request, db)
-        # detach ids/names the template needs before the session closes
-        return {
-            "nav_items": nav_items,
-            "current_path": request.url.path,
-            "campaigns": [{"id": c.id, "name": c.name} for c in campaigns],
-            "active_campaign": {"id": active.id, "name": active.name} if active else None,
-        }
-    finally:
-        db.close()
 
 
 def build_registry() -> Registry:
