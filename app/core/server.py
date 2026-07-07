@@ -52,6 +52,10 @@ def create_app() -> FastAPI:
     def home(request: Request) -> HTMLResponse:
         return templates.TemplateResponse(request, "home.html", shell_context(request))
 
+    @app.get("/style", response_class=HTMLResponse)
+    def style(request: Request) -> HTMLResponse:
+        return templates.TemplateResponse(request, "style.html", shell_context(request))
+
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
