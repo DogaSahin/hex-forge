@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 import re
+from collections import Counter
 from dataclasses import dataclass, field
 
 MAX_DICE = 1000
@@ -144,8 +145,6 @@ def _eval_dice(term: str, rng: random.Random) -> tuple[list[int], list[int], int
             survivors = ordered[n:]
         else:  # "dl"
             survivors = ordered[: len(ordered) - n]
-
-        from collections import Counter
 
         want = Counter(survivors)
         kept = []
