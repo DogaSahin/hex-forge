@@ -1,0 +1,14 @@
+<div id="clock-{{ clock.id }}" class="clock-item">
+  <div class="clock">
+    {% for i in range(clock.segments) %}
+      <button class="clock-seg{% if i < clock.filled %} is-filled{% endif %}"
+              hx-post="/factions/clocks/{{ clock.id }}/fill"
+              hx-vals='{"segment": {{ i }}}'
+              hx-target="#clock-{{ clock.id }}" hx-swap="outerHTML"
+              title="{{ i + 1 }}/{{ clock.segments }}"></button>
+    {% endfor %}
+  </div>
+  <span class="clock-name">{{ clock.name }}</span>
+  <button class="btn btn-icon" hx-post="/factions/clocks/{{ clock.id }}/delete"
+          hx-target="#faction-clocks" hx-swap="outerHTML" title="Delete clock">×</button>
+</div>

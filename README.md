@@ -20,9 +20,14 @@ Early and actively built. Working today:
     advantage/disadvantage (`1d20adv` / `1d20dis`), exploding dice (`3d6!`), and reroll (`4d6r1`);
   - **saved rolls** — store frequently used rolls as one-click re-roll buttons;
   - a **history feed** that logs every roll and updates live.
+- **Factions** (`/factions`) — a faction roster scoped to the active campaign:
+  - a **5-point disposition badge** from hostile to allied, with create, edit, and delete;
+  - Blades-style **progress clocks** — click a segment to fill up to it, click the current top segment
+    again to unfill;
+  - a **timestamped activity log** per faction, newest entries first.
 
-The read-only player screen and further modules (NPCs, factions, wiki, combat tracker, maps with fog)
-are on the way.
+The read-only player screen and further modules (NPCs, wiki, combat tracker, maps with fog) are on the
+way.
 
 ## Tech stack
 

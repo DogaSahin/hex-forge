@@ -1,0 +1,15 @@
+<div id="faction-clocks">
+  {% for clock in (faction.clocks if faction else []) %}
+    {% include "_clock.html" %}
+  {% else %}
+    <p class="muted">No clocks yet.</p>
+  {% endfor %}
+  {% if faction %}
+  <form class="clock-create" hx-post="/factions/{{ faction.id }}/clocks"
+        hx-target="#faction-clocks" hx-swap="outerHTML">
+    <input class="input" type="text" name="name" placeholder="Clock name" required>
+    <input class="input" type="number" name="segments" value="6" min="2" max="12">
+    <button class="btn" type="submit">Add clock</button>
+  </form>
+  {% endif %}
+</div>
