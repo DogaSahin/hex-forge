@@ -179,3 +179,22 @@ def delete_clock(
         db.delete(clock)
         db.commit()
     return templates.TemplateResponse(request, "_clocks.html", {"faction": faction})
+
+
+@router.post("/clocks/{clock_id}/fill", response_class=HTMLResponse)
+def fill_clock(
+    request: Request,
+    clock_id: int,
+    segment: int = Form(...),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    clock = _owned_clock(db, clock_id, campaign.id)
+    if clock is None:
+        return HTMLResponse("")  # not owned by the active campaign — no-op, no mutation
+    target = segment + 1  # clicking 0-based index i fills 1..i+1
+    # Clicking the current top segment toggles it off.
+    new_filled = segment if clock.filled == target else target
+    clock.filled = max(0, min(new_filled, clock.segments))
+    db.commit()
+    return templates.TemplateResponse(request, "_clock.html", {"clock": clock})

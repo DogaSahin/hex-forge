@@ -110,3 +110,52 @@ def test_clock_segments_clamped_to_range():
     resp = client.post(f"/factions/{fid}/clocks", data={"name": "Huge", "segments": "999"})
     assert resp.text.count("clock-seg") == 12  # clamped to max 12
     client.post(f"/factions/{fid}/delete")
+
+
+def _make_clock(faction_name: str, segments: int = 6):
+    client.post("/factions", data={"name": faction_name, "disposition": "neutral"})
+    fid = _faction_id(faction_name)
+    client.post(f"/factions/{fid}/clocks", data={"name": "C", "segments": str(segments)})
+    db = SessionLocal()
+    try:
+        from app.modules.factions.models import FactionClock
+
+        cid = db.query(FactionClock).join(Faction).filter(Faction.name == faction_name).first().id
+    finally:
+        db.close()
+    return fid, cid
+
+
+def _filled(clock_id: int) -> int:
+    db = SessionLocal()
+    try:
+        from app.modules.factions.models import FactionClock
+
+        return db.get(FactionClock, clock_id).filled
+    finally:
+        db.close()
+
+
+def test_clicking_segment_fills_up_to_it():
+    fid, cid = _make_clock("Plan-Test Fill")
+    client.post(f"/factions/clocks/{cid}/fill", data={"segment": "3"})  # 0-based index 3 -> fill 4
+    assert _filled(cid) == 4
+    client.post(f"/factions/{fid}/delete")
+
+
+def test_clicking_current_top_segment_unfills_it():
+    fid, cid = _make_clock("Plan-Test Unfill")
+    client.post(f"/factions/clocks/{cid}/fill", data={"segment": "2"})  # fill 3
+    assert _filled(cid) == 3
+    # click top again -> unfill to 2
+    client.post(f"/factions/clocks/{cid}/fill", data={"segment": "2"})
+    assert _filled(cid) == 2
+    client.post(f"/factions/{fid}/delete")
+
+
+def test_fill_clamps_within_bounds():
+    fid, cid = _make_clock("Plan-Test FillClamp", segments=4)
+    # beyond range -> clamp to 4
+    client.post(f"/factions/clocks/{cid}/fill", data={"segment": "10"})
+    assert _filled(cid) == 4
+    client.post(f"/factions/{fid}/delete")
