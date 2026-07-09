@@ -1,0 +1,21 @@
+{% set action = "/factions/" ~ faction.id if faction else "/factions" %}
+<form class="faction-form" hx-post="{{ action }}"
+      hx-target="{{ '#faction-detail' if faction else '#faction-roster' }}" hx-swap="innerHTML">
+  <label>Name
+    <input class="input" type="text" name="name" value="{{ faction.name if faction else '' }}" required>
+  </label>
+  <label>Disposition
+    <select class="input" name="disposition">
+      {% for d in dispositions %}
+        <option value="{{ d }}" {% if faction and faction.disposition == d or (not faction and d == 'neutral') %}selected{% endif %}>{{ d | capitalize }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Goals
+    <textarea class="input" name="goals" rows="2">{{ faction.goals or '' if faction else '' }}</textarea>
+  </label>
+  <label>Description
+    <textarea class="input" name="description" rows="3">{{ faction.description or '' if faction else '' }}</textarea>
+  </label>
+  <button class="btn btn-primary" type="submit">Save</button>
+</form>

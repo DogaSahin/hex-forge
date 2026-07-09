@@ -1,0 +1,18 @@
+<div id="faction-activity">
+  {% if faction %}
+  <form class="activity-add" hx-post="/factions/{{ faction.id }}/activity"
+        hx-target="#faction-activity" hx-swap="outerHTML"
+        x-data @htmx:after-request="$refs.entry.value = ''">
+    <input class="input" type="text" name="entry" x-ref="entry" placeholder="What did they do?" required>
+    <button class="btn" type="submit">Log</button>
+  </form>
+  {% endif %}
+  {% for item in (faction.activity if faction else []) %}
+    <div class="activity-row row">
+      <time>{{ item.occurred_at.strftime('%Y-%m-%d %H:%M') }}</time>
+      <span class="activity-entry">{{ item.entry }}</span>
+    </div>
+  {% else %}
+    <p class="muted">No activity logged yet.</p>
+  {% endfor %}
+</div>

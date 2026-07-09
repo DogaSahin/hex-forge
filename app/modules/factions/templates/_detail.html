@@ -1,0 +1,15 @@
+{% if not faction %}
+  <p class="muted">Select a faction, or create one.</p>
+{% else %}
+  <div class="detail-head">
+    <h2>{{ faction.name }}</h2>
+    <span class="badge-{{ faction.disposition }}">{{ faction.disposition | capitalize }}</span>
+    <button class="btn" hx-get="/factions/{{ faction.id }}/edit" hx-target="#faction-detail" hx-swap="innerHTML">Edit</button>
+    <button class="btn" hx-post="/factions/{{ faction.id }}/delete" hx-target="#faction-roster" hx-swap="innerHTML"
+            hx-confirm="Delete this faction and its clocks and activity?">Delete</button>
+  </div>
+  {% if faction.goals %}<div class="detail-goals"><h3>Goals</h3><p>{{ faction.goals }}</p></div>{% endif %}
+  {% if faction.description %}<div class="detail-desc"><p>{{ faction.description }}</p></div>{% endif %}
+  <div class="detail-clocks"><h3>Clocks</h3>{% include "_clocks.html" %}</div>
+  <div class="detail-activity"><h3>Activity</h3>{% include "_activity.html" %}</div>
+{% endif %}
