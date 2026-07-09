@@ -126,3 +126,12 @@ body.app {
 .palette-result { display: block; padding: var(--pad-2) var(--pad-3); color: var(--text-default);
   text-decoration: none; }
 .palette-result:hover { background: var(--surface-2); }
+
+/* ---- Faction clocks (Epic 3, task 3.9) ---- */
+.clock { display: inline-flex; gap: 2px; }
+.clock-seg {
+  width: 18px; height: 18px; padding: 0; cursor: pointer;
+  border: 0.5px solid var(--border); border-radius: 3px; background: var(--surface-2);
+}
+.clock-seg.is-filled { background: var(--warning); }
+.clock-item { display: flex; align-items: center; gap: var(--gap-2); margin-bottom: var(--gap-2); }

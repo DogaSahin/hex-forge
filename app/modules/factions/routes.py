@@ -10,12 +10,15 @@ from app.core.campaigns import get_active_campaign
 from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
-from app.modules.factions.models import DISPOSITIONS, Faction
+from app.modules.factions.models import DISPOSITIONS, Faction, FactionClock
 
 MODULE_DIR = Path(__file__).resolve().parent
 templates = module_templates(MODULE_DIR)
 
 router = APIRouter(prefix="/factions")
+
+CLOCK_MIN_SEGMENTS = 2
+CLOCK_MAX_SEGMENTS = 12
 
 
 def _roster(db: Session, campaign_id: int) -> list[Faction]:
@@ -25,6 +28,13 @@ def _roster(db: Session, campaign_id: int) -> list[Faction]:
 def _owned(db: Session, faction_id: int, campaign_id: int) -> Faction | None:
     f = db.get(Faction, faction_id)
     return f if f is not None and f.campaign_id == campaign_id else None
+
+
+def _owned_clock(db: Session, clock_id: int, campaign_id: int) -> FactionClock | None:
+    clock = db.get(FactionClock, clock_id)
+    if clock is None or clock.faction.campaign_id != campaign_id:
+        return None
+    return clock
 
 
 def _clean_disposition(value: str | None) -> str:
@@ -137,3 +147,35 @@ def delete(
     return templates.TemplateResponse(
         request, "_roster.html", {"factions": _roster(db, campaign.id)}
     )
+
+
+@router.post("/{faction_id}/clocks", response_class=HTMLResponse)
+def create_clock(
+    request: Request,
+    faction_id: int,
+    name: str = Form(...),
+    segments: int = Form(6),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    faction = _owned(db, faction_id, campaign.id)
+    if faction is not None:
+        seg = max(CLOCK_MIN_SEGMENTS, min(int(segments), CLOCK_MAX_SEGMENTS))
+        faction.clocks.append(FactionClock(name=name.strip(), segments=seg, filled=0))
+        db.commit()
+    return templates.TemplateResponse(request, "_clocks.html", {"faction": faction})
+
+
+@router.post("/clocks/{clock_id}/delete", response_class=HTMLResponse)
+def delete_clock(
+    request: Request,
+    clock_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    clock = _owned_clock(db, clock_id, campaign.id)
+    faction = clock.faction if clock is not None else None
+    if clock is not None:
+        db.delete(clock)
+        db.commit()
+    return templates.TemplateResponse(request, "_clocks.html", {"faction": faction})

@@ -79,3 +79,34 @@ def test_new_form_and_edit_form_render():
     edit = client.get(f"/factions/{fid}/edit")
     assert name in edit.text and 'name="disposition"' in edit.text
     client.post(f"/factions/{fid}/delete")
+
+
+def test_clock_create_and_delete():
+    name = "Plan-Test Clocks-Faction"
+    client.post("/factions", data={"name": name, "disposition": "neutral"})
+    fid = _faction_id(name)
+    created = client.post(f"/factions/{fid}/clocks", data={"name": "Ritual", "segments": "6"})
+    assert created.status_code == 200
+    assert "Ritual" in created.text
+    assert created.text.count("clock-seg") == 6  # six segments rendered
+
+    db = SessionLocal()
+    try:
+        from app.modules.factions.models import FactionClock
+
+        clock_id = db.query(FactionClock).filter_by(name="Ritual").first().id
+    finally:
+        db.close()
+    deleted = client.post(f"/factions/clocks/{clock_id}/delete")
+    assert deleted.status_code == 200
+    assert "Ritual" not in deleted.text
+    client.post(f"/factions/{fid}/delete")
+
+
+def test_clock_segments_clamped_to_range():
+    name = "Plan-Test Clamp-Clock"
+    client.post("/factions", data={"name": name, "disposition": "neutral"})
+    fid = _faction_id(name)
+    resp = client.post(f"/factions/{fid}/clocks", data={"name": "Huge", "segments": "999"})
+    assert resp.text.count("clock-seg") == 12  # clamped to max 12
+    client.post(f"/factions/{fid}/delete")
