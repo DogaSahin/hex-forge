@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from sqlalchemy import ForeignKey, Integer, String, Text
+from datetime import UTC, datetime
+
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -27,6 +29,12 @@ class Faction(Base):
         back_populates="faction", cascade="all, delete-orphan", order_by="FactionClock.id"
     )
 
+    activity: Mapped[list[FactionActivity]] = relationship(
+        back_populates="faction",
+        cascade="all, delete-orphan",
+        order_by="FactionActivity.occurred_at.desc(), FactionActivity.id.desc()",
+    )
+
 
 class FactionClock(Base):
     __tablename__ = "faction_clock"
@@ -40,3 +48,18 @@ class FactionClock(Base):
     filled: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
 
     faction: Mapped[Faction] = relationship(back_populates="clocks")
+
+
+class FactionActivity(Base):
+    __tablename__ = "faction_activity"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    faction_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("faction.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC), server_default=func.now(), nullable=False
+    )
+    entry: Mapped[str] = mapped_column(Text, nullable=False)
+
+    faction: Mapped[Faction] = relationship(back_populates="activity")
