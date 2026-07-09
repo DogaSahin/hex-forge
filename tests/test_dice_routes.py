@@ -1,6 +1,8 @@
 from fastapi.testclient import TestClient
 
+from app.core.database import SessionLocal
 from app.core.server import create_app
+from app.modules.dice.models import RollHistory, SavedRoll
 
 client = TestClient(create_app())
 
@@ -17,3 +19,33 @@ def test_dice_page_renders_with_nav_and_form():
 def test_dice_appears_in_nav():
     resp = client.get("/")
     assert "/dice" in resp.text
+
+
+def _history_count() -> int:
+    db = SessionLocal()
+    try:
+        return db.query(RollHistory).count()
+    finally:
+        db.close()
+
+
+def test_roll_returns_breakdown_and_logs_history():
+    before = _history_count()
+    resp = client.post("/dice/roll", data={"expression": "2d6+3"})
+    assert resp.status_code == 200
+    assert "dice-total" in resp.text
+    assert resp.headers.get("HX-Trigger") == "roll-logged"
+    assert _history_count() == before + 1
+
+
+def test_bad_expression_shows_error_not_500():
+    resp = client.post("/dice/roll", data={"expression": "2d6xyz"})
+    assert resp.status_code == 200
+    assert "dice-error" in resp.text
+
+
+def test_history_feed_survives_reload():
+    client.post("/dice/roll", data={"expression": "1d20"})
+    resp = client.get("/dice/history")
+    assert resp.status_code == 200
+    assert "history-row" in resp.text
