@@ -19,7 +19,7 @@ HOST = os.environ.get("HEXFORGE_HOST", "127.0.0.1")
 PORT = int(os.environ.get("HEXFORGE_PORT", "8000"))
 
 # Populated from Epic 1 onward as modules are enabled.
-ENABLED_MODULES: list[str] = ["app.modules._demo"]
+ENABLED_MODULES: list[str] = ["app.modules._demo", "app.modules.dice"]
 
 # Grid defaults (spec §6.2).
 DEFAULT_GRID_SIZE_PX = 70
