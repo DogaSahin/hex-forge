@@ -159,3 +159,41 @@ def test_fill_clamps_within_bounds():
     client.post(f"/factions/clocks/{cid}/fill", data={"segment": "10"})
     assert _filled(cid) == 4
     client.post(f"/factions/{fid}/delete")
+
+
+def test_activity_append_and_reverse_chron_feed():
+    name = "Plan-Test Activity-Feed"
+    client.post("/factions", data={"name": name, "disposition": "neutral"})
+    fid = _faction_id(name)
+    client.post(f"/factions/{fid}/activity", data={"entry": "first move"})
+    resp = client.post(f"/factions/{fid}/activity", data={"entry": "second move"})
+    assert resp.status_code == 200
+    # newest first: "second move" appears before "first move" in the rendered feed
+    assert resp.text.index("second move") < resp.text.index("first move")
+
+    # survives a fresh detail GET
+    detail = client.get(f"/factions/{fid}")
+    assert "first move" in detail.text and "second move" in detail.text
+    client.post(f"/factions/{fid}/delete")
+
+
+def test_activity_append_writes_exactly_one_row():
+    name = "Plan-Test Activity-Count"
+    client.post("/factions", data={"name": name, "disposition": "neutral"})
+    fid = _faction_id(name)
+    db = SessionLocal()
+    try:
+        from app.modules.factions.models import FactionActivity
+
+        before = db.query(FactionActivity).count()
+    finally:
+        db.close()
+    client.post(f"/factions/{fid}/activity", data={"entry": "one entry"})
+    db = SessionLocal()
+    try:
+        from app.modules.factions.models import FactionActivity
+
+        assert db.query(FactionActivity).count() == before + 1
+    finally:
+        db.close()
+    client.post(f"/factions/{fid}/delete")

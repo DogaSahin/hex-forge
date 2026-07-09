@@ -10,7 +10,7 @@ from app.core.campaigns import get_active_campaign
 from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
-from app.modules.factions.models import DISPOSITIONS, Faction, FactionClock
+from app.modules.factions.models import DISPOSITIONS, Faction, FactionActivity, FactionClock
 
 MODULE_DIR = Path(__file__).resolve().parent
 templates = module_templates(MODULE_DIR)
@@ -198,3 +198,19 @@ def fill_clock(
     clock.filled = max(0, min(new_filled, clock.segments))
     db.commit()
     return templates.TemplateResponse(request, "_clock.html", {"clock": clock})
+
+
+@router.post("/{faction_id}/activity", response_class=HTMLResponse)
+def append_activity(
+    request: Request,
+    faction_id: int,
+    entry: str = Form(...),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    faction = _owned(db, faction_id, campaign.id)
+    if faction is not None and entry.strip():
+        faction.activity.append(FactionActivity(entry=entry.strip()))
+        db.commit()
+        db.refresh(faction)
+    return templates.TemplateResponse(request, "_activity.html", {"faction": faction})
