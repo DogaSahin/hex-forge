@@ -177,6 +177,44 @@ def test_activity_append_and_reverse_chron_feed():
     client.post(f"/factions/{fid}/delete")
 
 
+def test_clock_fill_refused_for_other_campaigns_faction():
+    # Create a faction + clock under the default campaign.
+    name = "Plan-Test Owned"
+    client.post("/factions", data={"name": name, "disposition": "neutral"})
+    fid = _faction_id(name)
+    client.post(f"/factions/{fid}/clocks", data={"name": "Secret", "segments": "6"})
+    db = SessionLocal()
+    try:
+        from app.core.models import Campaign
+        from app.modules.factions.models import FactionClock
+
+        cid = db.query(FactionClock).filter_by(name="Secret").first().id
+        # A second campaign that does NOT own this clock.
+        other = Campaign(name="Plan-Test Other Campaign")
+        db.add(other)
+        db.commit()
+        other_id = other.id
+    finally:
+        db.close()
+
+    # Request as the other campaign (cookie); the fill must be refused (no mutation).
+    other_client = TestClient(create_app())
+    other_client.cookies.set("hexforge_campaign_id", str(other_id))
+    other_client.post(f"/factions/clocks/{cid}/fill", data={"segment": "5"})
+    assert _filled(cid) == 0  # unchanged
+
+    # Cleanup.
+    client.post(f"/factions/{fid}/delete")
+    db = SessionLocal()
+    try:
+        from app.core.models import Campaign
+
+        db.delete(db.get(Campaign, other_id))
+        db.commit()
+    finally:
+        db.close()
+
+
 def test_activity_append_writes_exactly_one_row():
     name = "Plan-Test Activity-Count"
     client.post("/factions", data={"name": name, "disposition": "neutral"})
