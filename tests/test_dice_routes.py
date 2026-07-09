@@ -45,10 +45,14 @@ def test_bad_expression_shows_error_not_500():
 
 
 def test_history_feed_survives_reload():
-    client.post("/dice/roll", data={"expression": "1d20"})
+    # Use a distinctive expression so the assertion is tied to THIS roll, not to
+    # pre-existing rows in the shared history table.
+    expr = "7d3+1"
+    client.post("/dice/roll", data={"expression": expr})
     resp = client.get("/dice/history")
     assert resp.status_code == 200
     assert "history-row" in resp.text
+    assert expr in resp.text  # the just-logged roll is rendered in the feed
 
 
 def _saved_id(label: str) -> int | None:
