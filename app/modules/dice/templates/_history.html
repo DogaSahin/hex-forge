@@ -1,0 +1,9 @@
+{% for row in history %}
+  <div class="history-row">
+    <span class="dice-total">{{ row.result }}</span>
+    <code>{{ row.expression }}</code>
+    <time>{{ row.rolled_at.strftime('%H:%M') }}</time>
+  </div>
+{% else %}
+  <p class="muted">No rolls yet.</p>
+{% endfor %}

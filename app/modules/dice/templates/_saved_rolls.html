@@ -1,0 +1,13 @@
+{% for roll in saved_rolls %}
+  <div class="saved-roll">
+    <button class="btn" hx-post="/dice/roll"
+            hx-vals='{"expression": {{ roll.expression | tojson }}}'
+            hx-target="#dice-result" hx-swap="innerHTML" title="{{ roll.expression }}">
+      {{ roll.label }}
+    </button>
+    <button class="btn btn-icon" hx-post="/dice/saved/{{ roll.id }}/delete"
+            hx-target="#saved-rolls" hx-swap="innerHTML" title="Delete">×</button>
+  </div>
+{% else %}
+  <p class="muted">No saved rolls yet.</p>
+{% endfor %}
