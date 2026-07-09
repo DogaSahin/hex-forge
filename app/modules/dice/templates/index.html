@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Dice — Hexforge{% endblock %}
+{% block content %}
+<section class="dice">
+  <h1>Dice</h1>
+
+  <form class="dice-roll-form" hx-post="/dice/roll" hx-target="#dice-result" hx-swap="innerHTML">
+    <input class="input" type="text" name="expression" placeholder="2d6+1d8+3" autocomplete="off" required>
+    <button class="btn btn-primary" type="submit">Roll</button>
+  </form>
+
+  <div id="dice-result" class="dice-result">
+    {% include "_result.html" %}
+  </div>
+
+  <div class="dice-cols">
+    <section class="panel">
+      <h2>Saved rolls</h2>
+      <div id="saved-rolls">{% include "_saved_rolls.html" %}</div>
+      <form class="saved-create" hx-post="/dice/saved" hx-target="#saved-rolls" hx-swap="innerHTML">
+        <input class="input" type="text" name="label" placeholder="Label" required>
+        <input class="input" type="text" name="expression" placeholder="1d20+5" required>
+        <button class="btn" type="submit">Save</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>History</h2>
+      <div id="dice-history" hx-get="/dice/history" hx-trigger="roll-logged from:body">
+        {% include "_history.html" %}
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}

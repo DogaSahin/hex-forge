@@ -1,0 +1,23 @@
+{% if error %}
+  <p class="dice-error">⚠ {{ error }}{% if expression %} — <code>{{ expression }}</code>{% endif %}</p>
+{% elif result %}
+  <div class="dice-breakdown">
+    <span class="dice-total">{{ result.total }}</span>
+    <code class="dice-expr">{{ result.expression }}</code>
+    <ul class="dice-terms">
+      {% for term in result.terms %}
+        <li>
+          <span class="term-sign">{{ '+' if term.sign > 0 else '−' }}</span>
+          {% if term.is_dice %}
+            <code>{{ term.source }}</code>:
+            {% for v in term.kept %}<span class="die">{{ v }}</span>{% endfor %}
+            {% if term.discarded %}<span class="dropped">({{ term.discarded | join(', ') }})</span>{% endif %}
+            = {{ term.total }}
+          {% else %}
+            <span class="flat">{{ term.flat }}</span>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
