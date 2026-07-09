@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Factions — Hexforge{% endblock %}
+{% block content %}
+<section class="factions two-pane">
+  <aside class="roster panel">
+    <div class="roster-head">
+      <h1>Factions</h1>
+      <button class="btn btn-primary" hx-get="/factions/new" hx-target="#faction-detail" hx-swap="innerHTML">+ New</button>
+    </div>
+    <div id="faction-roster">{% include "_roster.html" %}</div>
+  </aside>
+
+  <section id="faction-detail" class="detail card">
+    <p class="muted">Select a faction, or create one.</p>
+  </section>
+</section>
+{% endblock %}

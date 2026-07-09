@@ -14,6 +14,8 @@
   --danger: #d15b5b;      /* red = hostile / low HP */
   --success: #5aa46a;     /* green = friendly / full HP */
   --pro: #9a7bd0;         /* purple = conditions */
+  --danger-dim: #c9776b;      /* unfriendly (dim red) */
+  --success-bright: #63c47a;  /* allied (bright green) */
 
   --pad-1: 4px; --pad-2: 8px; --pad-3: 12px; --pad-4: 16px;
   --gap-1: 4px; --gap-2: 8px; --gap-3: 12px;
@@ -87,10 +89,13 @@ body.app {
   display: inline-block; padding: 2px var(--pad-2); border-radius: 999px;
   font-size: 12px; background: rgba(154, 123, 208, 0.18); color: var(--pro);
 }
-.badge-hostile  { color: var(--danger);  background: rgba(209, 91, 91, 0.16); }
-.badge-wary     { color: var(--warning); background: rgba(224, 165, 74, 0.16); }
-.badge-friendly { color: var(--success); background: rgba(90, 164, 106, 0.16); }
-.badge-hostile, .badge-wary, .badge-friendly {
+.badge-hostile    { color: var(--danger);         background: rgba(209, 91, 91, 0.16); }
+.badge-unfriendly { color: var(--danger-dim);     background: rgba(201, 119, 107, 0.16); }
+.badge-neutral    { color: var(--text-muted);     background: rgba(154, 161, 173, 0.16); }
+.badge-friendly   { color: var(--success);        background: rgba(90, 164, 106, 0.16); }
+.badge-allied     { color: var(--success-bright); background: rgba(99, 196, 122, 0.16); }
+.badge-wary       { color: var(--warning);        background: rgba(224, 165, 74, 0.16); }
+.badge-hostile, .badge-unfriendly, .badge-neutral, .badge-friendly, .badge-allied, .badge-wary {
   display: inline-block; padding: 2px var(--pad-2); border-radius: 999px; font-size: 12px;
 }
 

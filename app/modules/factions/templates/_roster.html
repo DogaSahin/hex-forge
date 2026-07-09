@@ -1,0 +1,9 @@
+{% for faction in factions %}
+  <a class="row faction-row" hx-get="/factions/{{ faction.id }}"
+     hx-target="#faction-detail" hx-swap="innerHTML" href="#">
+    <span class="faction-name">{{ faction.name }}</span>
+    <span class="badge-{{ faction.disposition }}">{{ faction.disposition | capitalize }}</span>
+  </a>
+{% else %}
+  <p class="muted">No factions yet.</p>
+{% endfor %}
