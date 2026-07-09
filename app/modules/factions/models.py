@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -15,8 +17,8 @@ class Faction(Base):
         Integer, ForeignKey("campaign.id"), index=True, nullable=False
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text)
     disposition: Mapped[str] = mapped_column(
         String(20), default=DEFAULT_DISPOSITION, server_default=DEFAULT_DISPOSITION, nullable=False
     )
-    goals: Mapped[str] = mapped_column(Text, nullable=True)
+    goals: Mapped[str | None] = mapped_column(Text)
