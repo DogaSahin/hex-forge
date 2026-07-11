@@ -131,3 +131,51 @@ def test_portrait_rejects_disallowed_type():
     assert resp.status_code == 200
     assert "Unsupported image type" in resp.text
     assert _npc_id(name) is None  # not created
+
+
+def test_roster_groups_null_and_dangling_faction_as_unaffiliated():
+    client.post(
+        "/npcs", data={"name": "Plan-Test No-Faction", "disposition": "neutral", "faction_id": ""}
+    )
+    # dangling: a faction_id that resolves to nothing
+    client.post(
+        "/npcs",
+        data={"name": "Plan-Test Dangling", "disposition": "neutral", "faction_id": "888888"},
+    )
+
+    resp = client.get("/npcs")
+    assert "Unaffiliated" in resp.text
+    assert "Plan-Test No-Faction" in resp.text and "Plan-Test Dangling" in resp.text
+
+    only_unaff = client.get("/npcs", params={"faction_id": "none"}, headers={"HX-Request": "true"})
+    assert "Plan-Test No-Faction" in only_unaff.text
+    assert "Plan-Test Dangling" in only_unaff.text
+
+    for nm in ("Plan-Test No-Faction", "Plan-Test Dangling"):
+        client.post(f"/npcs/{_npc_id(nm)}/delete")
+
+
+def test_roster_filter_by_specific_faction():
+    # Create a faction, then an NPC assigned to it; filtering by that id shows only that NPC.
+    client.post("/factions", data={"name": "Plan-Test NPC Faction", "disposition": "neutral"})
+    db = SessionLocal()
+    try:
+        from app.modules.factions.models import Faction
+
+        fid = db.query(Faction).filter_by(name="Plan-Test NPC Faction").first().id
+    finally:
+        db.close()
+    client.post(
+        "/npcs", data={"name": "Plan-Test Member", "disposition": "neutral", "faction_id": str(fid)}
+    )
+    client.post(
+        "/npcs", data={"name": "Plan-Test Outsider", "disposition": "neutral", "faction_id": ""}
+    )
+
+    filtered = client.get("/npcs", params={"faction_id": str(fid)}, headers={"HX-Request": "true"})
+    assert "Plan-Test Member" in filtered.text
+    assert "Plan-Test Outsider" not in filtered.text
+
+    client.post(f"/npcs/{_npc_id('Plan-Test Member')}/delete")
+    client.post(f"/npcs/{_npc_id('Plan-Test Outsider')}/delete")
+    client.post(f"/factions/{fid}/delete")
