@@ -54,6 +54,16 @@ def _all_tags(db: Session, campaign_id: int) -> list[Tag]:
     return db.query(Tag).filter_by(campaign_id=campaign_id).order_by(Tag.name).all()
 
 
+def _page_tags(db: Session, page_id: int) -> list[Tag]:
+    return (
+        db.query(Tag)
+        .join(WikiPageTag, WikiPageTag.tag_id == Tag.id)
+        .filter(WikiPageTag.page_id == page_id)
+        .order_by(Tag.name)
+        .all()
+    )
+
+
 def _unique_slug(db: Session, campaign_id: int, title: str, exclude_id: int | None = None) -> str:
     base = slugify(title)
     slug = base
@@ -133,6 +143,7 @@ def _detail_ctx(request: Request, db: Session, campaign_id: int, page: WikiPage 
         "page": page,
         "body_html": render_markdown(page.body_md, resolver.href),
         "backlinks": _backlinks(db, page),
+        "tags": _page_tags(db, page.id),
     }
 
 
@@ -255,6 +266,49 @@ def update(
         db.refresh(page)
         registry = request.app.state.registry
         _rebuild_links(db, registry, page)
+        db.commit()
+    return templates.TemplateResponse(
+        request, "_detail.html", _detail_ctx(request, db, campaign.id, page)
+    )
+
+
+@router.post("/{slug}/tags", response_class=HTMLResponse)
+def add_tag(
+    request: Request,
+    slug: str,
+    name: str = Form(""),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    page = _owned_by_slug(db, slug, campaign.id)
+    if page is not None and name.strip():
+        tag = db.query(Tag).filter_by(campaign_id=campaign.id, name=name.strip()).first()
+        if tag is None:
+            tag = Tag(campaign_id=campaign.id, name=name.strip())
+            db.add(tag)
+            db.flush()
+        exists = db.query(WikiPageTag).filter_by(page_id=page.id, tag_id=tag.id).first() is not None
+        if not exists:
+            db.add(WikiPageTag(page_id=page.id, tag_id=tag.id))
+        db.commit()
+    return templates.TemplateResponse(
+        request, "_detail.html", _detail_ctx(request, db, campaign.id, page)
+    )
+
+
+@router.post("/{slug}/tags/{tag_id}/delete", response_class=HTMLResponse)
+def remove_tag(
+    request: Request,
+    slug: str,
+    tag_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    page = _owned_by_slug(db, slug, campaign.id)
+    if page is not None:
+        db.query(WikiPageTag).filter_by(page_id=page.id, tag_id=tag_id).delete(
+            synchronize_session=False
+        )
         db.commit()
     return templates.TemplateResponse(
         request, "_detail.html", _detail_ctx(request, db, campaign.id, page)

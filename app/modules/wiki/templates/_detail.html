@@ -21,4 +21,15 @@
       </ul>
     </section>
   {% endif %}
+  <section class="wiki-tags">
+    {% for t in tags %}
+      <span class="chip">{{ t.name }}
+        <button class="chip-x" hx-post="/wiki/{{ page.slug }}/tags/{{ t.id }}/delete"
+                hx-target="#wiki-detail" hx-swap="innerHTML" title="Remove tag">×</button>
+      </span>
+    {% endfor %}
+    <form class="tag-add" hx-post="/wiki/{{ page.slug }}/tags" hx-target="#wiki-detail" hx-swap="innerHTML">
+      <input class="input" type="text" name="name" placeholder="add tag…">
+    </form>
+  </section>
 {% endif %}
