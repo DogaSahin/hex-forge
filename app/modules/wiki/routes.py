@@ -352,3 +352,8 @@ def delete(
         db.delete(page)
         db.commit()
     return templates.TemplateResponse(request, "_list.html", {"pages": _pages(db, campaign.id)})
+
+
+def wiki_jump(db: Session, campaign_id: int) -> list[dict]:
+    rows = db.query(WikiPage).filter_by(campaign_id=campaign_id).order_by(WikiPage.title).all()
+    return [{"label": p.title, "url": f"/wiki/{p.slug}", "kind": "wiki_page"} for p in rows]

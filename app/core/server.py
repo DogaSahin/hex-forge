@@ -3,13 +3,16 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
-from fastapi import FastAPI, Form, Request, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Form, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
 
 from app.core import config
-from app.core.campaigns import COOKIE_NAME
+from app.core.campaigns import COOKIE_NAME, get_active_campaign
+from app.core.database import get_db
+from app.core.models import Campaign
 from app.core.palette import search_index
 from app.core.registry import Registry
 from app.core.templating import shell_context
@@ -56,8 +59,15 @@ def create_app() -> FastAPI:
         return resp
 
     @app.get("/palette/search", response_class=HTMLResponse)
-    def palette_search(request: Request, q: str = "") -> HTMLResponse:
-        results = search_index(request.app.state.registry, q)
+    def palette_search(
+        request: Request,
+        q: str = "",
+        db: Session = Depends(get_db),
+        campaign: Campaign = Depends(get_active_campaign),
+    ) -> HTMLResponse:
+        registry = request.app.state.registry
+        jump_targets = registry.jump_targets(db, campaign.id)
+        results = search_index(registry, q, jump_targets)
         return templates.TemplateResponse(request, "_palette_results.html", {"results": results})
 
     @app.get("/health")

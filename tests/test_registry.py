@@ -43,3 +43,14 @@ def test_resolve_maps_id_to_name_and_none_for_dangling():
     assert reg.resolve("faction", 1, db=None, campaign_id=1) == "Iron Circle"
     assert reg.resolve("faction", 999, db=None, campaign_id=1) is None
     assert reg.resolve("npc", 1, db=None, campaign_id=1) is None
+
+
+def test_jump_provider_registration_and_union():
+    from app.core.registry import Registry
+
+    reg = Registry()
+    reg.add_jump_provider("x", lambda db, cid: [{"label": "X1", "url": "/x/1", "kind": "x"}])
+    reg.add_jump_provider("y", lambda db, cid: [{"label": "Y1", "url": "/y/1", "kind": "y"}])
+    targets = reg.jump_targets(None, 1)
+    labels = {t["label"] for t in targets}
+    assert labels == {"X1", "Y1"}
