@@ -31,8 +31,17 @@ Early and actively built. Working today:
   - a **relationships** page for linking NPCs to other NPCs or to factions with a free-text label
     (e.g. "rival of", "sworn to"), grouped by source and removable per edge;
   - a **random NPC generator** that pre-fills a name, motivation, and voice to speed up prep.
+- **Wiki** (`/wiki`) — a markdown knowledge base scoped to the active campaign:
+  - pages with a title, slug, category, and a markdown body rendered server-side;
+  - cross-entity `[[wikilinks]]` — write `[[Page Title]]`, `[[npc:Name]]`, or `[[faction:Name]]` inline
+    and it renders as a link to that page, NPC, or faction; links to something that doesn't exist yet
+    render as an amber "create it" link instead of a dead link;
+  - a **backlinks** panel on every page showing what links to it;
+  - **categories and tags** for organizing and filtering the page list, with quick add/remove of tags;
+  - **search** across page titles and bodies;
+  - pages, NPCs, and factions are all reachable from the **command palette** (Ctrl-K).
 
-The read-only player screen and further modules (wiki, combat tracker, maps with fog) are on the way.
+The read-only player screen and further modules (combat tracker, maps with fog) are on the way.
 
 ## Tech stack
 
