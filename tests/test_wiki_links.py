@@ -48,3 +48,28 @@ def test_render_leaves_code_literal():
 def test_render_markdown_formats():
     html = render_markdown("**bold**", _resolver)
     assert "<strong>bold</strong>" in html
+
+
+def test_render_escapes_unsafe_name_and_href():
+    """Verify that unsafe chars in wikilink name and resolved href are HTML-escaped."""
+
+    def resolver_unsafe(name):
+        # Return href with unsafe chars: & and "
+        return ('/wiki/page?a=1&b=2&quote="value"', True)
+
+    # Pass a wikilink name with unsafe chars: <, >, &
+    html = render_markdown("Visit [[A & <b>B</b>]] now", resolver_unsafe)
+
+    # Name's unsafe chars must be escaped in the anchor text
+    assert "&amp;" in html  # & in name escaped
+    assert "&lt;b&gt;" in html  # <b> in name escaped, not a live tag
+    assert "<b>B</b>" not in html  # raw <b> tag must not survive
+
+    # Href's unsafe chars must be escaped in the attribute
+    assert "a=1&amp;b=2" in html  # & in href escaped
+    assert "&quot;" in html or "&#x27;" in html  # quote in href escaped
+
+
+def test_extract_adjacent_wikilinks():
+    """Verify that adjacent wikilinks with no separator are both extracted."""
+    assert extract_wikilinks("[[A]][[B]]") == ["A", "B"]
