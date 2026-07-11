@@ -12,7 +12,7 @@ from app.core.campaigns import get_active_campaign
 from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
-from app.modules.npcs.models import DISPOSITIONS, Npc
+from app.modules.npcs.models import DISPOSITIONS, Npc, Relationship
 
 MODULE_DIR = Path(__file__).resolve().parent
 templates = module_templates(MODULE_DIR)
@@ -120,6 +120,38 @@ def _detail_ctx(request: Request, db: Session, campaign_id: int, npc: Npc | None
     return {"npc": npc, "faction_name": faction_name}
 
 
+RELATIONSHIP_KINDS = ("npc", "faction")
+
+
+def _split_ref(token: str) -> tuple[str, int | None]:
+    kind, _, raw = token.partition(":")
+    return kind, int(raw) if raw.isdigit() else None
+
+
+def _grouped_edges(request: Request, db: Session, campaign_id: int) -> dict[str, list[dict]]:
+    registry = request.app.state.registry
+    edges = (
+        db.query(Relationship).filter_by(campaign_id=campaign_id).order_by(Relationship.id).all()
+    )
+    grouped: dict[str, list[dict]] = {}
+    for e in edges:
+        source = registry.resolve(e.source_type, e.source_id, db, campaign_id) or "Unknown"
+        target = registry.resolve(e.target_type, e.target_id, db, campaign_id) or "Unknown"
+        grouped.setdefault(source, []).append(
+            {"id": e.id, "target": target, "target_type": e.target_type, "label": e.label}
+        )
+    return grouped
+
+
+def _rel_options(request: Request, db: Session, campaign_id: int) -> list[dict]:
+    registry = request.app.state.registry
+    options = []
+    for kind in RELATIONSHIP_KINDS:
+        for eid, name in registry.entities(kind, db, campaign_id):
+            options.append({"token": f"{kind}:{eid}", "name": name, "kind": kind})
+    return options
+
+
 @router.get("", response_class=HTMLResponse)
 def index(
     request: Request,
@@ -184,6 +216,72 @@ def create(
     registry = request.app.state.registry
     return templates.TemplateResponse(
         request, "_roster.html", {"groups": _grouped_roster(db, registry, campaign.id)}
+    )
+
+
+@router.get("/relationships", response_class=HTMLResponse)
+def relationships(
+    request: Request,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    ctx = shell_context(request)
+    ctx["grouped"] = _grouped_edges(request, db, campaign.id)
+    ctx["options"] = _rel_options(request, db, campaign.id)
+    return templates.TemplateResponse(request, "relationships.html", ctx)
+
+
+@router.post("/relationships", response_class=HTMLResponse)
+def create_relationship(
+    request: Request,
+    source: str = Form(""),
+    target: str = Form(""),
+    label: str = Form(""),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    registry = request.app.state.registry
+    s_kind, s_id = _split_ref(source)
+    t_kind, t_id = _split_ref(target)
+    valid = (
+        s_kind in RELATIONSHIP_KINDS
+        and t_kind in RELATIONSHIP_KINDS
+        and s_id is not None
+        and t_id is not None
+        and label.strip()
+        and registry.resolve(s_kind, s_id, db, campaign.id) is not None
+        and registry.resolve(t_kind, t_id, db, campaign.id) is not None
+    )
+    if valid:
+        db.add(
+            Relationship(
+                campaign_id=campaign.id,
+                source_type=s_kind,
+                source_id=s_id,
+                target_type=t_kind,
+                target_id=t_id,
+                label=label.strip(),
+            )
+        )
+        db.commit()
+    return templates.TemplateResponse(
+        request, "_relationships.html", {"grouped": _grouped_edges(request, db, campaign.id)}
+    )
+
+
+@router.post("/relationships/{rel_id}/delete", response_class=HTMLResponse)
+def delete_relationship(
+    request: Request,
+    rel_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    edge = db.get(Relationship, rel_id)
+    if edge is not None and edge.campaign_id == campaign.id:
+        db.delete(edge)
+        db.commit()
+    return templates.TemplateResponse(
+        request, "_relationships.html", {"grouped": _grouped_edges(request, db, campaign.id)}
     )
 
 
@@ -260,6 +358,11 @@ def delete(
 ) -> HTMLResponse:
     npc = _owned(db, npc_id, campaign.id)
     if npc is not None:
+        db.query(Relationship).filter(
+            Relationship.campaign_id == campaign.id,
+            ((Relationship.source_type == "npc") & (Relationship.source_id == npc_id))
+            | ((Relationship.target_type == "npc") & (Relationship.target_id == npc_id)),
+        ).delete(synchronize_session=False)
         _delete_portrait_file(npc.portrait_path)
         db.delete(npc)
         db.commit()

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Relationships — Hexforge{% endblock %}
+{% block content %}
+<section class="relationships panel">
+  <div class="roster-head">
+    <h1>Relationships</h1>
+    <a class="btn" href="/npcs">← NPCs</a>
+  </div>
+  <form class="rel-form" hx-post="/npcs/relationships" hx-target="#rel-list" hx-swap="innerHTML">
+    <select class="input" name="source">
+      {% for o in options %}<option value="{{ o.token }}">{{ o.name }} ({{ o.kind }})</option>{% endfor %}
+    </select>
+    <input class="input" type="text" name="label" placeholder="rival of…" required>
+    <select class="input" name="target">
+      {% for o in options %}<option value="{{ o.token }}">{{ o.name }} ({{ o.kind }})</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary" type="submit">Add</button>
+  </form>
+  <div id="rel-list">{% include "_relationships.html" %}</div>
+</section>
+{% endblock %}
