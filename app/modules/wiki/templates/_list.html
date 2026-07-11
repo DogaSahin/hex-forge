@@ -1,0 +1,12 @@
+<ul class="list">
+  {% for p in pages %}
+    <li class="list-row">
+      <a hx-get="/wiki/{{ p.slug }}" hx-target="#wiki-detail" hx-swap="innerHTML" hx-push-url="false">
+        {{ p.title }}
+      </a>
+      {% if p.category %}<span class="chip">{{ p.category }}</span>{% endif %}
+    </li>
+  {% else %}
+    <li class="muted">No pages yet.</li>
+  {% endfor %}
+</ul>
