@@ -33,9 +33,9 @@ Early and actively built. Working today:
   - a **random NPC generator** that pre-fills a name, motivation, and voice to speed up prep.
 - **Wiki** (`/wiki`) — a markdown knowledge base scoped to the active campaign:
   - pages with a title, slug, category, and a markdown body rendered server-side;
-  - cross-entity `[[wikilinks]]` — write `[[Page Title]]`, `[[npc:Name]]`, or `[[faction:Name]]` inline
-    and it renders as a link to that page, NPC, or faction; links to something that doesn't exist yet
-    render as an amber "create it" link instead of a dead link;
+  - cross-entity `[[wikilinks]]` — write `[[Name]]` inline and it links to a wiki page, NPC, or faction
+    with that name (matched in that order); a name that doesn't exist yet renders as an amber "create it"
+    link instead of a dead link;
   - a **backlinks** panel on every page showing what links to it;
   - **categories and tags** for organizing and filtering the page list, with quick add/remove of tags;
   - **search** across page titles and bodies;
