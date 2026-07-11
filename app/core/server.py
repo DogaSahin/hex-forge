@@ -39,6 +39,7 @@ def create_app() -> FastAPI:
         app.include_router(router)
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    app.mount("/media", StaticFiles(directory=str(config.MEDIA_DIR)), name="media")
 
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request) -> HTMLResponse:
