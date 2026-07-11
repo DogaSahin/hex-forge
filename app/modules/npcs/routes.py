@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
@@ -10,7 +10,7 @@ from app.core.campaigns import get_active_campaign
 from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
-from app.modules.npcs.models import Npc
+from app.modules.npcs.models import DISPOSITIONS, Npc
 
 MODULE_DIR = Path(__file__).resolve().parent
 templates = module_templates(MODULE_DIR)
@@ -52,6 +52,44 @@ def _grouped_roster(
     return result
 
 
+def _owned(db: Session, npc_id: int, campaign_id: int) -> Npc | None:
+    n = db.get(Npc, npc_id)
+    return n if n is not None and n.campaign_id == campaign_id else None
+
+
+def _clean_disposition(value: str | None) -> str:
+    return value if value in DISPOSITIONS else "neutral"
+
+
+def _clean_faction_id(value: str | None) -> int | None:
+    return int(value) if value and value.isdigit() else None
+
+
+def _form_ctx(
+    request: Request, db: Session, campaign_id: int, npc: Npc | None, error: str | None = None
+) -> dict:
+    registry = request.app.state.registry
+    return {
+        "npc": npc,
+        "factions": registry.entities("faction", db, campaign_id),
+        "dispositions": DISPOSITIONS,
+        "error": error,
+        "prefill_name": "",
+        "prefill_motivation": "",
+        "prefill_voice": "",
+    }
+
+
+def _detail_ctx(request: Request, db: Session, campaign_id: int, npc: Npc | None) -> dict:
+    registry = request.app.state.registry
+    faction_name = (
+        registry.resolve("faction", npc.faction_id, db, campaign_id)
+        if npc and npc.faction_id
+        else None
+    )
+    return {"npc": npc, "faction_name": faction_name}
+
+
 @router.get("", response_class=HTMLResponse)
 def index(
     request: Request,
@@ -67,6 +105,121 @@ def index(
     ctx["groups"] = groups
     ctx["factions"] = registry.entities("faction", db, campaign.id)
     return templates.TemplateResponse(request, "index.html", ctx)
+
+
+@router.get("/new", response_class=HTMLResponse)
+def new(
+    request: Request,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request, "_form.html", _form_ctx(request, db, campaign.id, None)
+    )
+
+
+@router.post("", response_class=HTMLResponse)
+def create(
+    request: Request,
+    name: str = Form(...),
+    disposition: str = Form("neutral"),
+    faction_id: str = Form(""),
+    statblock: str = Form(""),
+    motivation: str = Form(""),
+    secrets: str = Form(""),
+    voice: str = Form(""),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    db.add(
+        Npc(
+            campaign_id=campaign.id,
+            name=name.strip(),
+            disposition=_clean_disposition(disposition),
+            faction_id=_clean_faction_id(faction_id),
+            statblock=statblock.strip() or None,
+            motivation=motivation.strip() or None,
+            secrets=secrets.strip() or None,
+            voice=voice.strip() or None,
+        )
+    )
+    db.commit()
+    registry = request.app.state.registry
+    return templates.TemplateResponse(
+        request, "_roster.html", {"groups": _grouped_roster(db, registry, campaign.id)}
+    )
+
+
+@router.get("/{npc_id}", response_class=HTMLResponse)
+def detail(
+    request: Request,
+    npc_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    npc = _owned(db, npc_id, campaign.id)
+    return templates.TemplateResponse(
+        request, "_detail.html", _detail_ctx(request, db, campaign.id, npc)
+    )
+
+
+@router.get("/{npc_id}/edit", response_class=HTMLResponse)
+def edit(
+    request: Request,
+    npc_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    npc = _owned(db, npc_id, campaign.id)
+    return templates.TemplateResponse(
+        request, "_form.html", _form_ctx(request, db, campaign.id, npc)
+    )
+
+
+@router.post("/{npc_id}", response_class=HTMLResponse)
+def update(
+    request: Request,
+    npc_id: int,
+    name: str = Form(...),
+    disposition: str = Form("neutral"),
+    faction_id: str = Form(""),
+    statblock: str = Form(""),
+    motivation: str = Form(""),
+    secrets: str = Form(""),
+    voice: str = Form(""),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    npc = _owned(db, npc_id, campaign.id)
+    if npc is not None:
+        npc.name = name.strip()
+        npc.disposition = _clean_disposition(disposition)
+        npc.faction_id = _clean_faction_id(faction_id)
+        npc.statblock = statblock.strip() or None
+        npc.motivation = motivation.strip() or None
+        npc.secrets = secrets.strip() or None
+        npc.voice = voice.strip() or None
+        db.commit()
+    return templates.TemplateResponse(
+        request, "_detail.html", _detail_ctx(request, db, campaign.id, npc)
+    )
+
+
+@router.post("/{npc_id}/delete", response_class=HTMLResponse)
+def delete(
+    request: Request,
+    npc_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    npc = _owned(db, npc_id, campaign.id)
+    if npc is not None:
+        db.delete(npc)
+        db.commit()
+    registry = request.app.state.registry
+    return templates.TemplateResponse(
+        request, "_roster.html", {"groups": _grouped_roster(db, registry, campaign.id)}
+    )
 
 
 def register_entities(registry) -> None:

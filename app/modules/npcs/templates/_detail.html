@@ -1,0 +1,17 @@
+{% if not npc %}
+  <p class="muted">Select an NPC, or create one.</p>
+{% else %}
+  <div class="detail-head">
+    <h2>{{ npc.name }}</h2>
+    <span class="badge-{{ npc.disposition }}">{{ npc.disposition | capitalize }}</span>
+    <button class="btn" hx-get="/npcs/{{ npc.id }}/edit" hx-target="#npc-detail" hx-swap="innerHTML">Edit</button>
+    <button class="btn" hx-post="/npcs/{{ npc.id }}/delete" hx-target="#npc-roster" hx-swap="innerHTML"
+            hx-confirm="Delete this NPC?">Delete</button>
+  </div>
+  {% if npc.portrait_path %}<img class="npc-portrait" src="/media/{{ npc.portrait_path }}" alt="{{ npc.name }}">{% endif %}
+  <p class="muted npc-faction">{{ faction_name or "Unaffiliated" }}</p>
+  {% if npc.motivation %}<div class="detail-block"><h3>Motivation</h3><p>{{ npc.motivation }}</p></div>{% endif %}
+  {% if npc.secrets %}<div class="detail-block"><h3>Secrets</h3><p>{{ npc.secrets }}</p></div>{% endif %}
+  {% if npc.voice %}<div class="detail-block"><h3>Voice</h3><p>{{ npc.voice }}</p></div>{% endif %}
+  {% if npc.statblock %}<div class="detail-block"><h3>Statblock</h3><pre>{{ npc.statblock }}</pre></div>{% endif %}
+{% endif %}
