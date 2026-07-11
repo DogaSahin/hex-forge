@@ -12,6 +12,7 @@ from app.core.campaigns import get_active_campaign
 from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
+from app.modules.npcs.generator import generate_stub
 from app.modules.npcs.models import DISPOSITIONS, Npc, Relationship
 
 MODULE_DIR = Path(__file__).resolve().parent
@@ -178,6 +179,20 @@ def new(
     return templates.TemplateResponse(
         request, "_form.html", _form_ctx(request, db, campaign.id, None)
     )
+
+
+@router.get("/generate", response_class=HTMLResponse)
+def generate(
+    request: Request,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    stub = generate_stub()
+    ctx = _form_ctx(request, db, campaign.id, None)
+    ctx["prefill_name"] = stub["name"]
+    ctx["prefill_motivation"] = stub["motivation"]
+    ctx["prefill_voice"] = stub["voice"]
+    return templates.TemplateResponse(request, "_form.html", ctx)
 
 
 @router.post("", response_class=HTMLResponse)
