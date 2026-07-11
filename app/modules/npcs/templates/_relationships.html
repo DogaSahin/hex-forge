@@ -1,0 +1,14 @@
+{% for source_name, edges in grouped.items() %}
+  <div class="rel-group">
+    <h3 class="rel-source">{{ source_name }}</h3>
+    {% for e in edges %}
+      <div class="row rel-row">
+        <span class="rel-label">{{ e.label }}</span>
+        <span class="rel-target">{{ e.target }} <span class="muted">({{ e.target_type }})</span></span>
+        <button class="btn" hx-post="/npcs/relationships/{{ e.id }}/delete" hx-target="#rel-list" hx-swap="innerHTML">✕</button>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="muted">No relationships yet.</p>
+{% endfor %}

@@ -25,6 +25,12 @@ def _roster(db: Session, campaign_id: int) -> list[Faction]:
     return db.query(Faction).filter_by(campaign_id=campaign_id).order_by(Faction.name).all()
 
 
+def faction_entities(db: Session, campaign_id: int) -> list[tuple[int, str]]:
+    """Entity-registry provider: exposes factions to core for cross-module lookup."""
+    rows = db.query(Faction).filter_by(campaign_id=campaign_id).order_by(Faction.name).all()
+    return [(f.id, f.name) for f in rows]
+
+
 def _owned(db: Session, faction_id: int, campaign_id: int) -> Faction | None:
     f = db.get(Faction, faction_id)
     return f if f is not None and f.campaign_id == campaign_id else None

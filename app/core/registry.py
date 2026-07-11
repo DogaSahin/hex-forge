@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+EntityProvider = Callable[["Session", int], "list[tuple[int, str]]"]
 
 
 @dataclass(frozen=True)
@@ -18,6 +25,7 @@ class Registry:
     routers: list[APIRouter] = field(default_factory=list)
     nav_items: list[NavItem] = field(default_factory=list)
     ws_topics: list[str] = field(default_factory=list)
+    entity_providers: dict[str, EntityProvider] = field(default_factory=dict)
 
     def add_router(self, router: APIRouter) -> None:
         self.routers.append(router)
@@ -30,3 +38,16 @@ class Registry:
 
     def sorted_nav(self) -> list[NavItem]:
         return sorted(self.nav_items, key=lambda n: n.order)
+
+    def add_entity_provider(self, kind: str, provider: EntityProvider) -> None:
+        self.entity_providers[kind] = provider
+
+    def entities(self, kind: str, db, campaign_id: int) -> list[tuple[int, str]]:
+        provider = self.entity_providers.get(kind)
+        return provider(db, campaign_id) if provider else []
+
+    def resolve(self, kind: str, entity_id: int, db, campaign_id: int) -> str | None:
+        for eid, name in self.entities(kind, db, campaign_id):
+            if eid == entity_id:
+                return name
+        return None
