@@ -1,0 +1,13 @@
+{% for group_name, npcs in groups %}
+  <div class="roster-group">
+    <h3 class="roster-group-head">{{ group_name }}</h3>
+    {% for npc in npcs %}
+      <a class="row npc-row" hx-get="/npcs/{{ npc.id }}" hx-target="#npc-detail" hx-swap="innerHTML" href="#">
+        <span class="npc-name">{{ npc.name }}</span>
+        <span class="badge-{{ npc.disposition }}">{{ npc.disposition | capitalize }}</span>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="muted">No NPCs yet.</p>
+{% endfor %}

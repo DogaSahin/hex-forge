@@ -135,3 +135,15 @@ body.app {
 }
 .clock-seg.is-filled { background: var(--warning); }
 .clock-item { display: flex; align-items: center; gap: var(--gap-2); margin-bottom: var(--gap-2); }
+
+/* ---- NPCs (Epic 4) ---- */
+.roster-actions { display: flex; gap: 0.4rem; }
+.roster-group-head { margin: 0.6rem 0 0.2rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.npc-portrait { max-width: 160px; border-radius: 8px; margin: 0.4rem 0; }
+.npc-faction { margin-top: 0; }
+.detail-block { margin-top: 0.6rem; }
+.detail-block pre { white-space: pre-wrap; }
+.form-error { color: var(--danger); }
+.rel-form { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+.rel-source { margin: 0.6rem 0 0.2rem; }
+.rel-row { gap: 0.6rem; align-items: center; }

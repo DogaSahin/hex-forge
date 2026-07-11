@@ -1,0 +1,40 @@
+{% set action = "/npcs/" ~ npc.id if npc else "/npcs" %}
+<form class="npc-form" hx-post="{{ action }}" hx-encoding="multipart/form-data"
+      hx-target="{{ '#npc-detail' if npc else '#npc-roster' }}" hx-swap="innerHTML">
+  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+  <label>Name
+    <input class="input" type="text" name="name" required
+           value="{{ npc.name if npc else prefill_name }}">
+  </label>
+  <label>Faction
+    <select class="input" name="faction_id">
+      <option value="">Unaffiliated</option>
+      {% for fid, fname in factions %}
+        <option value="{{ fid }}" {% if npc and npc.faction_id == fid %}selected{% endif %}>{{ fname }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Disposition
+    <select class="input" name="disposition">
+      {% for d in dispositions %}
+        <option value="{{ d }}" {% if (npc and npc.disposition == d) or (not npc and d == 'neutral') %}selected{% endif %}>{{ d | capitalize }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Motivation
+    <textarea class="input" name="motivation" rows="2">{{ npc.motivation or '' if npc else prefill_motivation }}</textarea>
+  </label>
+  <label>Secrets
+    <textarea class="input" name="secrets" rows="2">{{ npc.secrets or '' if npc else '' }}</textarea>
+  </label>
+  <label>Voice
+    <textarea class="input" name="voice" rows="2">{{ npc.voice or '' if npc else prefill_voice }}</textarea>
+  </label>
+  <label>Statblock
+    <textarea class="input" name="statblock" rows="3">{{ npc.statblock or '' if npc else '' }}</textarea>
+  </label>
+  <label>Portrait
+    <input class="input" type="file" name="portrait" accept="image/png,image/jpeg,image/webp,image/gif">
+  </label>
+  <button class="btn btn-primary" type="submit">Save</button>
+</form>
