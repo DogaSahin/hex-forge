@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
@@ -11,8 +12,8 @@ from app.core.campaigns import get_active_campaign
 from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
-from app.modules.wiki.links import render_markdown, slugify
-from app.modules.wiki.models import Tag, WikiPage, WikiPageTag
+from app.modules.wiki.links import extract_wikilinks, render_markdown, slugify
+from app.modules.wiki.models import Tag, WikiLink, WikiPage, WikiPageTag
 
 MODULE_DIR = Path(__file__).resolve().parent
 templates = module_templates(MODULE_DIR)
@@ -65,19 +66,73 @@ def _unique_slug(db: Session, campaign_id: int, title: str, exclude_id: int | No
         n += 1
 
 
-def _plain_resolver(name: str) -> tuple[str, bool]:
-    # Task 5 replaces this with real page/NPC/faction resolution.
-    from urllib.parse import quote
+class _Resolver:
+    """Resolve a [[Name]] against pages -> NPCs -> factions for one campaign.
+    Built once per request; used for both link persistence and rendering."""
 
-    return (f"/wiki/new?title={quote(name)}", False)
+    def __init__(self, db: Session, registry, campaign_id: int) -> None:
+        self._pages = {
+            p.title.lower(): (p.id, p.slug)
+            for p in db.query(WikiPage).filter_by(campaign_id=campaign_id).all()
+        }
+        self._npcs = {name.lower(): eid for eid, name in registry.entities("npc", db, campaign_id)}
+        self._factions = {
+            name.lower(): eid for eid, name in registry.entities("faction", db, campaign_id)
+        }
+
+    def ref(self, name: str) -> tuple[str, int | None]:
+        key = name.lower()
+        if key in self._pages:
+            return ("page", self._pages[key][0])
+        if key in self._npcs:
+            return ("npc", self._npcs[key])
+        if key in self._factions:
+            return ("faction", self._factions[key])
+        return ("page", None)  # unresolved -> page-create target
+
+    def href(self, name: str) -> tuple[str, bool]:
+        key = name.lower()
+        if key in self._pages:
+            return (f"/wiki/{self._pages[key][1]}", True)
+        if key in self._npcs:
+            return (f"/npcs/{self._npcs[key]}", True)
+        if key in self._factions:
+            return (f"/factions/{self._factions[key]}", True)
+        return (f"/wiki/new?title={quote(name)}", False)
+
+
+def _rebuild_links(db: Session, registry, page: WikiPage) -> None:
+    db.query(WikiLink).filter_by(source_page_id=page.id).delete(synchronize_session=False)
+    resolver = _Resolver(db, registry, page.campaign_id)
+    for name in extract_wikilinks(page.body_md):
+        target_type, target_id = resolver.ref(name)
+        db.add(
+            WikiLink(
+                source_page_id=page.id,
+                target_type=target_type,
+                target_id=target_id,
+                target_title=name,
+            )
+        )
+
+
+def _backlinks(db: Session, page: WikiPage) -> list[WikiPage]:
+    rows = db.query(WikiLink).filter_by(target_type="page", target_id=page.id).all()
+    source_ids = {r.source_page_id for r in rows}
+    if not source_ids:
+        return []
+    return db.query(WikiPage).filter(WikiPage.id.in_(source_ids)).order_by(WikiPage.title).all()
 
 
 def _detail_ctx(request: Request, db: Session, campaign_id: int, page: WikiPage | None) -> dict:
     if page is None:
         return {"page": None}
+    registry = request.app.state.registry
+    resolver = _Resolver(db, registry, campaign_id)
     return {
         "page": page,
-        "body_html": render_markdown(page.body_md, _plain_resolver),
+        "body_html": render_markdown(page.body_md, resolver.href),
+        "backlinks": _backlinks(db, page),
     }
 
 
@@ -132,6 +187,9 @@ def create(
     db.add(page)
     db.commit()
     db.refresh(page)
+    registry = request.app.state.registry
+    _rebuild_links(db, registry, page)
+    db.commit()
     return templates.TemplateResponse(
         request, "_detail.html", _detail_ctx(request, db, campaign.id, page)
     )
@@ -195,6 +253,9 @@ def update(
         # Slug is intentionally NOT regenerated (keeps inbound [[links]] + URLs stable).
         db.commit()
         db.refresh(page)
+        registry = request.app.state.registry
+        _rebuild_links(db, registry, page)
+        db.commit()
     return templates.TemplateResponse(
         request, "_detail.html", _detail_ctx(request, db, campaign.id, page)
     )
@@ -209,8 +270,6 @@ def delete(
 ) -> HTMLResponse:
     page = _owned_by_slug(db, slug, campaign.id)
     if page is not None:
-        from app.modules.wiki.models import WikiLink
-
         db.query(WikiLink).filter_by(source_page_id=page.id).delete(synchronize_session=False)
         db.query(WikiPageTag).filter_by(page_id=page.id).delete(synchronize_session=False)
         db.delete(page)

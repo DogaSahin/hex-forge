@@ -9,4 +9,16 @@
             hx-confirm="Delete this page?">Delete</button>
   </div>
   <article class="wiki-body">{{ body_html | safe }}</article>
+  {% if backlinks %}
+    <section class="wiki-backlinks">
+      <h3>Mentioned on</h3>
+      <ul class="list">
+        {% for b in backlinks %}
+          <li class="list-row">
+            <a hx-get="/wiki/{{ b.slug }}" hx-target="#wiki-detail" hx-swap="innerHTML">{{ b.title }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
 {% endif %}
