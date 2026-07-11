@@ -1,5 +1,8 @@
+import io
+
 from fastapi.testclient import TestClient
 
+from app.core import config
 from app.core.database import SessionLocal
 from app.core.server import create_app
 from app.modules.npcs.models import Npc
@@ -93,3 +96,38 @@ def test_update_in_other_campaign_is_refused():
     finally:
         db.close()
     client.post(f"/npcs/{nid}/delete")
+
+
+def test_portrait_upload_persists_and_renders():
+    name = "Plan-Test Portrait NPC"
+    png = b"\x89PNG\r\n\x1a\n" + b"0" * 64  # minimal fake PNG bytes
+    resp = client.post(
+        "/npcs",
+        data={"name": name, "disposition": "neutral"},
+        files={"portrait": ("face.png", io.BytesIO(png), "image/png")},
+    )
+    assert resp.status_code == 200
+    db = SessionLocal()
+    try:
+        row = db.query(Npc).filter_by(name=name).first()
+        assert row.portrait_path and row.portrait_path.startswith("portraits/")
+        assert (config.MEDIA_DIR / row.portrait_path).is_file()
+        stored = config.MEDIA_DIR / row.portrait_path
+    finally:
+        db.close()
+    detail = client.get(f"/npcs/{_npc_id(name)}")
+    assert f"/media/{row.portrait_path}" in detail.text
+    client.post(f"/npcs/{_npc_id(name)}/delete")
+    assert not stored.exists()  # file removed on delete
+
+
+def test_portrait_rejects_disallowed_type():
+    name = "Plan-Test Bad Portrait"
+    resp = client.post(
+        "/npcs",
+        data={"name": name, "disposition": "neutral"},
+        files={"portrait": ("evil.exe", io.BytesIO(b"MZ..."), "application/octet-stream")},
+    )
+    assert resp.status_code == 200
+    assert "Unsupported image type" in resp.text
+    assert _npc_id(name) is None  # not created

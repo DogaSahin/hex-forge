@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
+from app.core import config
 from app.core.campaigns import get_active_campaign
 from app.core.database import get_db
 from app.core.models import Campaign
@@ -18,6 +20,34 @@ templates = module_templates(MODULE_DIR)
 router = APIRouter(prefix="/npcs")
 
 UNAFFILIATED = "Unaffiliated"
+
+ALLOWED_IMAGE_EXT = {"png", "jpg", "jpeg", "webp", "gif"}
+MAX_PORTRAIT_BYTES = 5 * 1024 * 1024
+
+
+def _store_portrait(upload: UploadFile | None) -> tuple[str | None, str | None]:
+    """Validate + persist a portrait. Returns (relative_path, error)."""
+    if upload is None or not upload.filename:
+        return None, None
+    ext = upload.filename.rsplit(".", 1)[-1].lower() if "." in upload.filename else ""
+    if ext not in ALLOWED_IMAGE_EXT:
+        return None, "Unsupported image type."
+    data = upload.file.read()
+    if not data:
+        return None, None
+    if len(data) > MAX_PORTRAIT_BYTES:
+        return None, "Portrait too large (max 5 MB)."
+    fname = f"{uuid.uuid4().hex}.{ext}"
+    (config.PORTRAITS_DIR / fname).write_bytes(data)
+    return f"portraits/{fname}", None
+
+
+def _delete_portrait_file(rel_path: str | None) -> None:
+    if rel_path:
+        try:
+            (config.MEDIA_DIR / rel_path).unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def npc_entities(db: Session, campaign_id: int) -> list[tuple[int, str]]:
@@ -128,9 +158,15 @@ def create(
     motivation: str = Form(""),
     secrets: str = Form(""),
     voice: str = Form(""),
+    portrait: UploadFile | None = File(None),
     db: Session = Depends(get_db),
     campaign: Campaign = Depends(get_active_campaign),
 ) -> HTMLResponse:
+    portrait_path, error = _store_portrait(portrait)
+    if error:
+        return templates.TemplateResponse(
+            request, "_form.html", _form_ctx(request, db, campaign.id, None, error)
+        )
     db.add(
         Npc(
             campaign_id=campaign.id,
@@ -141,6 +177,7 @@ def create(
             motivation=motivation.strip() or None,
             secrets=secrets.strip() or None,
             voice=voice.strip() or None,
+            portrait_path=portrait_path,
         )
     )
     db.commit()
@@ -187,11 +224,20 @@ def update(
     motivation: str = Form(""),
     secrets: str = Form(""),
     voice: str = Form(""),
+    portrait: UploadFile | None = File(None),
     db: Session = Depends(get_db),
     campaign: Campaign = Depends(get_active_campaign),
 ) -> HTMLResponse:
     npc = _owned(db, npc_id, campaign.id)
     if npc is not None:
+        portrait_path, error = _store_portrait(portrait)
+        if error:
+            return templates.TemplateResponse(
+                request, "_form.html", _form_ctx(request, db, campaign.id, npc, error)
+            )
+        if portrait_path:
+            _delete_portrait_file(npc.portrait_path)
+            npc.portrait_path = portrait_path
         npc.name = name.strip()
         npc.disposition = _clean_disposition(disposition)
         npc.faction_id = _clean_faction_id(faction_id)
@@ -214,6 +260,7 @@ def delete(
 ) -> HTMLResponse:
     npc = _owned(db, npc_id, campaign.id)
     if npc is not None:
+        _delete_portrait_file(npc.portrait_path)
         db.delete(npc)
         db.commit()
     registry = request.app.state.registry
