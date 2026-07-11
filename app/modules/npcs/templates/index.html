@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}NPCs — Hexforge{% endblock %}
+{% block content %}
+<section class="npcs two-pane">
+  <aside class="roster panel">
+    <div class="roster-head">
+      <h1>NPCs</h1>
+      <div class="roster-actions">
+        <button class="btn" hx-get="/npcs/generate" hx-target="#npc-detail" hx-swap="innerHTML">🎲 Random</button>
+        <button class="btn btn-primary" hx-get="/npcs/new" hx-target="#npc-detail" hx-swap="innerHTML">+ New</button>
+      </div>
+    </div>
+    <form class="roster-filter" hx-get="/npcs" hx-target="#npc-roster" hx-swap="innerHTML" hx-trigger="change">
+      <select class="input" name="faction_id">
+        <option value="">All factions</option>
+        <option value="none">Unaffiliated</option>
+        {% for fid, fname in factions %}<option value="{{ fid }}">{{ fname }}</option>{% endfor %}
+      </select>
+    </form>
+    <div id="npc-roster">{% include "_roster.html" %}</div>
+  </aside>
+
+  <section id="npc-detail" class="detail card">
+    <p class="muted">Select an NPC, or create one.</p>
+  </section>
+</section>
+{% endblock %}
