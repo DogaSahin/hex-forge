@@ -179,3 +179,36 @@ def test_roster_filter_by_specific_faction():
     client.post(f"/npcs/{_npc_id('Plan-Test Member')}/delete")
     client.post(f"/npcs/{_npc_id('Plan-Test Outsider')}/delete")
     client.post(f"/factions/{fid}/delete")
+
+
+def _npc_count() -> int:
+    db = SessionLocal()
+    try:
+        return db.query(Npc).count()
+    finally:
+        db.close()
+
+
+def test_create_blank_name_rejected():
+    before = _npc_count()
+    resp = client.post("/npcs", data={"name": "   ", "disposition": "neutral", "faction_id": ""})
+    assert resp.status_code == 200
+    assert "Name is required." in resp.text
+    assert _npc_count() == before  # no row created
+
+
+def test_create_faction_id_outside_campaign_coerced_to_none():
+    name = "Plan-Test Foreign Faction NPC"
+    resp = client.post(
+        "/npcs",
+        data={"name": name, "disposition": "neutral", "faction_id": "777777"},
+    )
+    assert resp.status_code == 200
+    db = SessionLocal()
+    try:
+        row = db.query(Npc).filter_by(name=name).first()
+        assert row is not None
+        assert row.faction_id is None
+    finally:
+        db.close()
+    client.post(f"/npcs/{_npc_id(name)}/delete")

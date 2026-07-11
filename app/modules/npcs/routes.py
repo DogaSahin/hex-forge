@@ -96,6 +96,18 @@ def _clean_faction_id(value: str | None) -> int | None:
     return int(value) if value and value.isdigit() else None
 
 
+def _gated_faction_id(
+    request: Request, db: Session, campaign_id: int, value: str | None
+) -> int | None:
+    """Parse a faction_id form value and gate it to the active campaign's factions."""
+    fid = _clean_faction_id(value)
+    if fid is None:
+        return None
+    registry = request.app.state.registry
+    valid_ids = {row_id for row_id, _ in registry.entities("faction", db, campaign_id)}
+    return fid if fid in valid_ids else None
+
+
 def _form_ctx(
     request: Request, db: Session, campaign_id: int, npc: Npc | None, error: str | None = None
 ) -> dict:
@@ -209,6 +221,12 @@ def create(
     db: Session = Depends(get_db),
     campaign: Campaign = Depends(get_active_campaign),
 ) -> HTMLResponse:
+    if not name.strip():
+        return templates.TemplateResponse(
+            request,
+            "_form.html",
+            _form_ctx(request, db, campaign.id, None, "Name is required."),
+        )
     portrait_path, error = _store_portrait(portrait)
     if error:
         return templates.TemplateResponse(
@@ -219,7 +237,7 @@ def create(
             campaign_id=campaign.id,
             name=name.strip(),
             disposition=_clean_disposition(disposition),
-            faction_id=_clean_faction_id(faction_id),
+            faction_id=_gated_faction_id(request, db, campaign.id, faction_id),
             statblock=statblock.strip() or None,
             motivation=motivation.strip() or None,
             secrets=secrets.strip() or None,
@@ -343,6 +361,12 @@ def update(
 ) -> HTMLResponse:
     npc = _owned(db, npc_id, campaign.id)
     if npc is not None:
+        if not name.strip():
+            return templates.TemplateResponse(
+                request,
+                "_form.html",
+                _form_ctx(request, db, campaign.id, npc, "Name is required."),
+            )
         portrait_path, error = _store_portrait(portrait)
         if error:
             return templates.TemplateResponse(
@@ -353,7 +377,7 @@ def update(
             npc.portrait_path = portrait_path
         npc.name = name.strip()
         npc.disposition = _clean_disposition(disposition)
-        npc.faction_id = _clean_faction_id(faction_id)
+        npc.faction_id = _gated_faction_id(request, db, campaign.id, faction_id)
         npc.statblock = statblock.strip() or None
         npc.motivation = motivation.strip() or None
         npc.secrets = secrets.strip() or None
