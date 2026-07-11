@@ -25,9 +25,14 @@ Early and actively built. Working today:
   - Blades-style **progress clocks** — click a segment to fill up to it, click the current top segment
     again to unfill;
   - a **timestamped activity log** per faction, newest entries first.
+- **NPCs** (`/npcs`) — an NPC roster scoped to the active campaign, grouped by faction (with a filter):
+  - full CRUD with a portrait upload, motivation, secrets, voice notes, and a freeform statblock,
+    alongside the same disposition badge used for factions;
+  - a **relationships** page for linking NPCs to other NPCs or to factions with a free-text label
+    (e.g. "rival of", "sworn to"), grouped by source and removable per edge;
+  - a **random NPC generator** that pre-fills a name, motivation, and voice to speed up prep.
 
-The read-only player screen and further modules (NPCs, wiki, combat tracker, maps with fog) are on the
-way.
+The read-only player screen and further modules (wiki, combat tracker, maps with fog) are on the way.
 
 ## Tech stack
 
