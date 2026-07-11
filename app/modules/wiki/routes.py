@@ -172,6 +172,29 @@ def new(request: Request, title: str = "") -> HTMLResponse:
     )
 
 
+@router.get("/search", response_class=HTMLResponse)
+def search(
+    request: Request,
+    q: str = "",
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    needle = q.strip()
+    results: list[WikiPage] = []
+    if needle:
+        like = f"%{needle}%"
+        results = (
+            db.query(WikiPage)
+            .filter(
+                WikiPage.campaign_id == campaign.id,
+                (WikiPage.title.ilike(like)) | (WikiPage.body_md.ilike(like)),
+            )
+            .order_by(WikiPage.title)
+            .all()
+        )
+    return templates.TemplateResponse(request, "_search.html", {"results": results, "q": needle})
+
+
 @router.post("", response_class=HTMLResponse)
 def create(
     request: Request,

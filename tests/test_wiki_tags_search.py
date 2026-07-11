@@ -46,3 +46,17 @@ def test_category_and_tag_filters():
 
     by_tag = client.get("/wiki", params={"tag": "starred"}, headers={"HX-Request": "true"})
     assert "FilterA" in by_tag.text and "FilterB" not in by_tag.text
+
+
+def test_search_finds_by_body_content():
+    client.post("/wiki", data={"title": "Searchable Page", "body_md": "the zephyr crystal hums"})
+    resp = client.get(
+        "/wiki/search", params={"q": "zephyr crystal"}, headers={"HX-Request": "true"}
+    )
+    assert resp.status_code == 200
+    assert "Searchable Page" in resp.text
+
+
+def test_search_empty_query_returns_no_error():
+    resp = client.get("/wiki/search", params={"q": ""}, headers={"HX-Request": "true"})
+    assert resp.status_code == 200
