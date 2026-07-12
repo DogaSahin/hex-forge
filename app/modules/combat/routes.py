@@ -428,3 +428,36 @@ async def toggle_concentration(
         db.commit()
         await _notify(enc.id)
     return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(request, db, enc))
+
+
+def advance_turn(
+    active_id: int | None, ordered_ids: list[int], current_round: int
+) -> tuple[int | None, int]:
+    """Next-turn engine. None/stale active -> first (round unchanged, starts combat);
+    wrapping past the last -> first + round++. Empty -> (None, round)."""
+    if not ordered_ids:
+        return None, current_round
+    if active_id not in ordered_ids:
+        return ordered_ids[0], current_round
+    idx = ordered_ids.index(active_id)
+    if idx + 1 < len(ordered_ids):
+        return ordered_ids[idx + 1], current_round
+    return ordered_ids[0], current_round + 1
+
+
+@router.post("/{encounter_id}/next-turn", response_class=HTMLResponse)
+async def next_turn(
+    request: Request,
+    encounter_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    enc = _owned_encounter(db, encounter_id, campaign.id)
+    if enc is not None:
+        ordered = [c.id for c in _combatants(db, enc.id)]
+        enc.active_combatant_id, enc.round = advance_turn(
+            enc.active_combatant_id, ordered, enc.round
+        )
+        db.commit()
+        await _notify(enc.id)
+    return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(request, db, enc))
