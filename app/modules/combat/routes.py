@@ -13,7 +13,7 @@ from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
 from app.core.websocket import manager
 from app.modules.combat.models import CONDITIONS, Combatant, Encounter
-from app.modules.combat.statblock import parse_stats  # noqa: F401
+from app.modules.combat.statblock import parse_stats
 
 MODULE_DIR = Path(__file__).resolve().parent
 templates = module_templates(MODULE_DIR)
@@ -64,13 +64,31 @@ def _conditions(c: Combatant) -> list[str]:
         return []
 
 
-def _tracker_ctx(db: Session, encounter: Encounter | None) -> dict:
+def _tracker_ctx(request: Request, db: Session, encounter: Encounter | None) -> dict:
+    campaign_id = encounter.campaign_id if encounter is not None else None
+    npc_options = (
+        request.app.state.registry.entities("npc", db, campaign_id)
+        if campaign_id is not None
+        else []
+    )
     if encounter is None:
-        return {"encounter": None, "rows": [], "conditions_all": CONDITIONS}
+        return {
+            "encounter": None,
+            "rows": [],
+            "conditions_all": CONDITIONS,
+            "npc_options": npc_options,
+            "prefill": None,
+        }
     rows = _combatants(db, encounter.id)
     for c in rows:
         c.cond_list = _conditions(c)  # transient attr for the template; not persisted
-    return {"encounter": encounter, "rows": rows, "conditions_all": CONDITIONS}
+    return {
+        "encounter": encounter,
+        "rows": rows,
+        "conditions_all": CONDITIONS,
+        "npc_options": npc_options,
+        "prefill": None,
+    }
 
 
 @router.get("", response_class=HTMLResponse)
@@ -87,7 +105,7 @@ def index(
     ctx = shell_context(request)
     ctx["encounters"] = encounters
     ctx["active_id"] = None
-    ctx.update(_tracker_ctx(db, None))
+    ctx.update(_tracker_ctx(request, db, None))
     return templates.TemplateResponse(request, "index.html", ctx)
 
 
@@ -121,7 +139,7 @@ def tracker(
     campaign: Campaign = Depends(get_active_campaign),
 ) -> HTMLResponse:
     enc = _owned_encounter(db, encounter_id, campaign.id)
-    return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(db, enc))
+    return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(request, db, enc))
 
 
 @router.post("/{encounter_id}/delete", response_class=HTMLResponse)
@@ -216,7 +234,7 @@ async def add_combatant(
         )
         db.commit()
         await _notify(enc.id)
-    return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(db, enc))
+    return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(request, db, enc))
 
 
 @router.post("/combatant/{combatant_id}/delete", response_class=HTMLResponse)
@@ -228,7 +246,7 @@ async def delete_combatant(
 ) -> HTMLResponse:
     c = _owned_combatant(db, combatant_id, campaign.id)
     if c is None:
-        return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(db, None))
+        return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(request, db, None))
     enc = db.get(Encounter, c.encounter_id)
     if enc.active_combatant_id == c.id:
         ordered = [x.id for x in _combatants(db, enc.id)]
@@ -240,4 +258,37 @@ async def delete_combatant(
     db.delete(c)
     db.commit()
     await _notify(enc.id)
-    return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(db, enc))
+    return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(request, db, enc))
+
+
+def _npc_options(request: Request, db: Session, campaign_id: int) -> list[tuple[int, str]]:
+    return request.app.state.registry.entities("npc", db, campaign_id)
+
+
+@router.get("/{encounter_id}/add-npc", response_class=HTMLResponse)
+def add_npc_form(
+    request: Request,
+    encounter_id: int,
+    npc_id: str = "",
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    enc = _owned_encounter(db, encounter_id, campaign.id)
+    ctx = {
+        "encounter": enc,
+        "npc_options": _npc_options(request, db, campaign.id),
+        "prefill": {"name": "", "hp_max": "", "hp_current": "", "ac": "", "npc_id": ""},
+    }
+    nid = _int_or_none(npc_id)
+    if enc is not None and nid is not None:
+        detail = request.app.state.registry.entity_detail("npc", nid, db, campaign.id)
+        if detail is not None:
+            stats = parse_stats(detail.get("statblock"))
+            ctx["prefill"] = {
+                "name": detail["name"],
+                "hp_max": stats.get("hp_max", ""),
+                "hp_current": stats.get("hp_current", ""),
+                "ac": stats.get("ac", ""),
+                "npc_id": str(nid),
+            }
+    return templates.TemplateResponse(request, "_combatant_form.html", ctx)
