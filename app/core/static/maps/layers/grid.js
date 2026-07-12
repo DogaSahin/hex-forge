@@ -6,7 +6,7 @@ export function createGridLayer(ctx) {
     render(state) {
       layer.destroyChildren();
       const m = state.map;
-      if (!m || !m.grid_visible || !m.grid_size_px) { layer.draw(); return; }
+      if (!m || !m.grid_visible || !(m.grid_size_px > 0)) { layer.draw(); return; }
       const w = m.image_w || ctx.stage.width();
       const h = m.image_h || ctx.stage.height();
       const s = m.grid_size_px;
