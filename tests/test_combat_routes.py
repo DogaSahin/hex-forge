@@ -133,3 +133,37 @@ def test_remove_combatant_deletes_and_advances_active():
     finally:
         db.close()
     client.post(f"/combat/{eid}/delete")
+
+
+def test_delete_combatant_in_other_campaign_is_refused():
+    client.post("/combat", data={"name": "Plan-Test Combatant Owned"})
+    eid = _enc_id("Plan-Test Combatant Owned")
+    client.post(
+        f"/combat/{eid}/combatant",
+        data={"name": "Goblin", "initiative": "15", "hp_max": "8", "hp_current": "8", "ac": "14"},
+    )
+    db = SessionLocal()
+    try:
+        combatant = db.query(Combatant).filter_by(encounter_id=eid, name="Goblin").first()
+        cid = combatant.id
+        other = Campaign(name="Plan-Test Combatant Other Campaign")
+        db.add(other)
+        db.commit()
+        other_id = other.id
+    finally:
+        db.close()
+    other_client = TestClient(create_app())
+    other_client.cookies.set("hexforge_campaign_id", str(other_id))
+    other_client.post(f"/combat/combatant/{cid}/delete")
+    db = SessionLocal()
+    try:
+        assert db.get(Combatant, cid) is not None
+    finally:
+        db.close()
+    db = SessionLocal()
+    try:
+        db.delete(db.get(Campaign, other_id))
+        db.commit()
+    finally:
+        db.close()
+    client.post(f"/combat/{eid}/delete")
