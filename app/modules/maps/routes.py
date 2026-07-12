@@ -11,12 +11,13 @@ from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
 from app.modules.maps.models import DIAGONAL_RULES, Map, Token
-from app.modules.maps.uploads import store_map_image
+from app.modules.maps.uploads import store_map_image, store_token_image
 
 MODULE_DIR = Path(__file__).resolve().parent
 templates = module_templates(MODULE_DIR)
 
 router = APIRouter(prefix="/map")
+token_router = APIRouter(prefix="/token")
 
 TOKEN_LAYERS = ("tokens", "dm")
 
@@ -253,3 +254,21 @@ def _map_dict(m: Map) -> dict:
         "diagonal_rule": m.diagonal_rule,
         "is_active": m.is_active,
     }
+
+
+@token_router.post("/{token_id}/image", response_class=HTMLResponse)
+def upload_token_image(
+    request: Request,
+    token_id: int,
+    image: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    t = _owned_token(db, token_id, campaign.id)
+    if t is not None:
+        rel, _w, _h, error = store_token_image(image)
+        if rel and not error:
+            t.image_path, t.kind = rel, "image"
+            db.commit()
+    m = db.get(Map, t.map_id) if t is not None else None
+    return _editor_response(request, db, m)
