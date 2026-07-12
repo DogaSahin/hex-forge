@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 EntityProvider = Callable[["Session", int], "list[tuple[int, str]]"]
+DetailProvider = Callable[["Session", int, int], "dict | None"]
 JumpProvider = Callable[["Session", int], "list[dict]"]
 
 
@@ -27,6 +28,7 @@ class Registry:
     nav_items: list[NavItem] = field(default_factory=list)
     ws_topics: list[str] = field(default_factory=list)
     entity_providers: dict[str, EntityProvider] = field(default_factory=dict)
+    entity_detail_providers: dict[str, DetailProvider] = field(default_factory=dict)
     jump_providers: dict[str, JumpProvider] = field(default_factory=dict)
 
     def add_router(self, router: APIRouter) -> None:
@@ -53,6 +55,13 @@ class Registry:
             if eid == entity_id:
                 return name
         return None
+
+    def add_entity_detail_provider(self, kind: str, provider: DetailProvider) -> None:
+        self.entity_detail_providers[kind] = provider
+
+    def entity_detail(self, kind: str, entity_id: int, db, campaign_id: int) -> dict | None:
+        provider = self.entity_detail_providers.get(kind)
+        return provider(db, entity_id, campaign_id) if provider else None
 
     def add_jump_provider(self, kind: str, provider: JumpProvider) -> None:
         self.jump_providers[kind] = provider
