@@ -21,6 +21,7 @@ export function mountEditor(host) {
     layers.forEach((l) => l.inst.render(state));
   }
   refresh();
+  host.addEventListener("map:refresh", refresh);
 
   // WS wiring is added in Slice 6; expose the layer table for those tasks.
   host._hexLayers = layers;

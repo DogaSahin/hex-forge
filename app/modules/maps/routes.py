@@ -10,7 +10,7 @@ from app.core.campaigns import get_active_campaign
 from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
-from app.modules.maps.models import Map
+from app.modules.maps.models import DIAGONAL_RULES, Map
 from app.modules.maps.uploads import store_map_image
 
 MODULE_DIR = Path(__file__).resolve().parent
@@ -124,6 +124,39 @@ def upload_image(
             m.image_path, m.image_w, m.image_h = rel, w, h
             db.commit()
     return _editor_response(request, db, m)
+
+
+def _int_or(value: str, default: int) -> int:
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
+@router.post("/{map_id}/settings", response_class=HTMLResponse)
+def update_settings(
+    request: Request,
+    map_id: int,
+    grid_size_px: str = Form("70"),
+    grid_offset_x: str = Form("0"),
+    grid_offset_y: str = Form("0"),
+    grid_visible: str = Form(""),
+    feet_per_square: str = Form("5"),
+    diagonal_rule: str = Form("chebyshev"),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    m = _owned_map(db, map_id, campaign.id)
+    if m is not None:
+        m.grid_size_px = max(1, _int_or(grid_size_px, 70))
+        m.grid_offset_x = _int_or(grid_offset_x, 0)
+        m.grid_offset_y = _int_or(grid_offset_y, 0)
+        m.grid_visible = bool(grid_visible)
+        m.feet_per_square = max(1, _int_or(feet_per_square, 5))
+        if diagonal_rule in DIAGONAL_RULES:
+            m.diagonal_rule = diagonal_rule
+        db.commit()
+    return templates.TemplateResponse(request, "_settings.html", {"map": m})
 
 
 @router.get("/{map_id}/state")
