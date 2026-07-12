@@ -145,6 +145,31 @@ def tracker(
     return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(request, db, enc))
 
 
+@router.get("/{encounter_id}/player", response_class=HTMLResponse)
+def player_mirror(
+    request: Request,
+    encounter_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    """Spoiler-safe combat projection for the player screen. Emits ONLY name,
+    is_pc, active flag, and an HP band — never numbers, AC, or conditions."""
+    enc = _owned_encounter(db, encounter_id, campaign.id)
+    rows = _combatants(db, enc.id) if enc is not None else []
+    mirror = [
+        {
+            "name": c.name,
+            "is_pc": c.is_pc,
+            "is_active": enc.active_combatant_id == c.id,
+            "band": hp_band(c.hp_current, c.hp_max),
+        }
+        for c in rows
+    ]
+    return templates.TemplateResponse(
+        request, "_player_mirror.html", {"encounter": enc, "rows": mirror}
+    )
+
+
 @router.post("/{encounter_id}/delete", response_class=HTMLResponse)
 def delete_encounter(
     request: Request,
