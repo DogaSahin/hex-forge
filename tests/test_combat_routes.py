@@ -1,3 +1,5 @@
+import json as _json
+
 from fastapi.testclient import TestClient
 
 from app.core.database import SessionLocal
@@ -265,6 +267,43 @@ def test_reorder_persists_dragged_order():
             .all()
         )
         assert [r.id for r in ordered] == [two, one]
+    finally:
+        db.close()
+    client.post(f"/combat/{eid}/delete")
+
+
+def test_condition_add_preset_and_custom_then_remove():
+    eid, cid = _one_combatant("Plan-Test Cond")
+    client.post(f"/combat/combatant/{cid}/condition", data={"name": "prone", "op": "add"})
+    client.post(f"/combat/combatant/{cid}/condition", data={"name": "on fire", "op": "add"})
+    client.post(f"/combat/combatant/{cid}/condition", data={"name": "prone", "op": "add"})  # dupe
+    db = SessionLocal()
+    try:
+        conds = _json.loads(db.get(Combatant, cid).conditions_json)
+        assert conds == ["prone", "on fire"]  # custom allowed, no dupe
+    finally:
+        db.close()
+    client.post(f"/combat/combatant/{cid}/condition", data={"name": "prone", "op": "remove"})
+    db = SessionLocal()
+    try:
+        assert _json.loads(db.get(Combatant, cid).conditions_json) == ["on fire"]
+    finally:
+        db.close()
+    client.post(f"/combat/{eid}/delete")
+
+
+def test_concentration_toggles():
+    eid, cid = _one_combatant("Plan-Test Conc")
+    client.post(f"/combat/combatant/{cid}/concentration")
+    db = SessionLocal()
+    try:
+        assert db.get(Combatant, cid).concentration is True
+    finally:
+        db.close()
+    client.post(f"/combat/combatant/{cid}/concentration")
+    db = SessionLocal()
+    try:
+        assert db.get(Combatant, cid).concentration is False
     finally:
         db.close()
     client.post(f"/combat/{eid}/delete")

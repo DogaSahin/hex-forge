@@ -384,3 +384,47 @@ async def edit_ac(
         db.commit()
         await _notify(enc.id)
     return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(request, db, enc))
+
+
+def _set_conditions(c: Combatant, names: list[str]) -> None:
+    c.conditions_json = json.dumps(names)
+
+
+@router.post("/combatant/{combatant_id}/condition", response_class=HTMLResponse)
+async def edit_condition(
+    request: Request,
+    combatant_id: int,
+    name: str = Form(""),
+    op: str = Form("add"),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    c = _owned_combatant(db, combatant_id, campaign.id)
+    enc = db.get(Encounter, c.encounter_id) if c is not None else None
+    label = name.strip()
+    if c is not None and label:
+        current = _conditions(c)
+        if op == "remove":
+            current = [x for x in current if x != label]
+        elif label not in current:
+            current.append(label)
+        _set_conditions(c, current)
+        db.commit()
+        await _notify(enc.id)
+    return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(request, db, enc))
+
+
+@router.post("/combatant/{combatant_id}/concentration", response_class=HTMLResponse)
+async def toggle_concentration(
+    request: Request,
+    combatant_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    c = _owned_combatant(db, combatant_id, campaign.id)
+    enc = db.get(Encounter, c.encounter_id) if c is not None else None
+    if c is not None:
+        c.concentration = not c.concentration
+        db.commit()
+        await _notify(enc.id)
+    return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(request, db, enc))
