@@ -43,8 +43,29 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
   }
+  // Refetch the tracker when a combat_changed signal arrives for the shown encounter.
+  var wsEnc = null;
+  function wireWS() {
+    var id = encId();
+    if (id && id !== wsEnc && window.HexWS) {
+      wsEnc = id;
+      HexWS.connect("combat:" + id);
+    }
+  }
+  if (window.HexWS) {
+    HexWS.on("combat_changed", function (payload, msg) {
+      if (String(msg.encounter_id) === String(encId())) {
+        document.body.dispatchEvent(new CustomEvent("combatChanged"));
+      }
+    });
+  }
+
   initSortable();
-  document.body.addEventListener("htmx:afterSwap", initSortable);
+  wireWS();
+  document.body.addEventListener("htmx:afterSwap", function () {
+    initSortable();
+    wireWS();
+  });
 });
 </script>
 {% endblock %}
