@@ -21,6 +21,13 @@
     <form hx-post="/map/{{ map.id }}/set-active" hx-target="#map-list" hx-swap="outerHTML">
       <button type="submit" class="btn btn-accent">Push to players</button>
     </form>
+    <form hx-post="/map/{{ map.id }}/token" hx-target="#map-editor" hx-swap="innerHTML" class="token-add">
+      <input type="text" name="name" placeholder="Token name">
+      <input type="color" name="color" value="#c0392b">
+      <input type="number" name="size" value="1" min="1" style="width:3rem">
+      <select name="layer"><option value="tokens">Tokens</option><option value="dm">DM (secret)</option></select>
+      <button type="submit" class="btn">Add token</button>
+    </form>
   </div>
   <div class="map-canvas-wrap">
     <div id="map-stage" data-map-id="{{ map.id }}" data-mode="dm"

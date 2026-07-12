@@ -10,13 +10,15 @@ from app.core.campaigns import get_active_campaign
 from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
-from app.modules.maps.models import DIAGONAL_RULES, Map
+from app.modules.maps.models import DIAGONAL_RULES, Map, Token
 from app.modules.maps.uploads import store_map_image
 
 MODULE_DIR = Path(__file__).resolve().parent
 templates = module_templates(MODULE_DIR)
 
 router = APIRouter(prefix="/map")
+
+TOKEN_LAYERS = ("tokens", "dm")
 
 
 def _maps(db: Session, campaign_id: int) -> list[Map]:
@@ -26,6 +28,32 @@ def _maps(db: Session, campaign_id: int) -> list[Map]:
 def _owned_map(db: Session, map_id: int, campaign_id: int) -> Map | None:
     m = db.get(Map, map_id)
     return m if m is not None and m.campaign_id == campaign_id else None
+
+
+def _token_dm_dict(t: Token) -> dict:
+    return {
+        "id": t.id,
+        "layer": t.layer,
+        "kind": t.kind,
+        "x": t.x,
+        "y": t.y,
+        "size": t.size,
+        "color": t.color,
+        "image_path": t.image_path,
+        "name": t.name,
+        "hp_current": t.hp_current,
+        "hp_max": t.hp_max,
+        "hp_visible_to_players": t.hp_visible_to_players,
+        "visible_to_players": t.visible_to_players,
+    }
+
+
+def _owned_token(db: Session, token_id: int, campaign_id: int) -> Token | None:
+    t = db.get(Token, token_id)
+    if t is None:
+        return None
+    m = db.get(Map, t.map_id)
+    return t if m is not None and m.campaign_id == campaign_id else None
 
 
 def map_jump(db: Session, campaign_id: int) -> list[dict]:
@@ -126,6 +154,36 @@ def upload_image(
     return _editor_response(request, db, m)
 
 
+@router.post("/{map_id}/token", response_class=HTMLResponse)
+def create_token(
+    request: Request,
+    map_id: int,
+    name: str = Form(""),
+    kind: str = Form("disc"),
+    color: str = Form("#888888"),
+    size: str = Form("1"),
+    layer: str = Form("tokens"),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    m = _owned_map(db, map_id, campaign.id)
+    if m is not None:
+        db.add(
+            Token(
+                map_id=m.id,
+                name=name.strip(),
+                kind="image" if kind == "image" else "disc",
+                color=color,
+                size=max(1, _int_or(size, 1)),
+                layer=layer if layer in TOKEN_LAYERS else "tokens",
+                x=(m.grid_size_px or 70),
+                y=(m.grid_size_px or 70),
+            )
+        )
+        db.commit()
+    return _editor_response(request, db, m)
+
+
 def _int_or(value: str, default: int) -> int:
     try:
         return int(value)
@@ -172,7 +230,8 @@ def map_state(
 
 
 def _tokens_dm(db: Session, map_id: int) -> list[dict]:
-    return []  # Task 12 fills this
+    rows = db.query(Token).filter_by(map_id=map_id).order_by(Token.id).all()
+    return [_token_dm_dict(t) for t in rows]
 
 
 def _fog_ops(db: Session, map_id: int) -> list[dict]:
