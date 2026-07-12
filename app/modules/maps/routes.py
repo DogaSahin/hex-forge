@@ -32,6 +32,21 @@ def map_jump(db: Session, campaign_id: int) -> list[dict]:
     return [{"label": m.name, "url": f"/map/{m.id}", "kind": "map"} for m in _maps(db, campaign_id)]
 
 
+@router.get("/{map_id}", response_class=HTMLResponse)
+def editor(
+    request: Request,
+    map_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    m = _owned_map(db, map_id, campaign.id)
+    return _editor_response(request, db, m)
+
+
+def _editor_response(request: Request, db: Session, m: Map | None) -> HTMLResponse:
+    return templates.TemplateResponse(request, "_editor.html", {"map": m})
+
+
 @router.get("", response_class=HTMLResponse)
 def index(
     request: Request,
@@ -108,9 +123,7 @@ def upload_image(
         if rel and not error:
             m.image_path, m.image_w, m.image_h = rel, w, h
             db.commit()
-    return templates.TemplateResponse(
-        request, "_map_list.html", {"maps": _maps(db, campaign.id), "active_id": map_id}
-    )
+    return _editor_response(request, db, m)
 
 
 @router.get("/{map_id}/state")
@@ -121,8 +134,16 @@ def map_state(
 ) -> dict:
     m = _owned_map(db, map_id, campaign.id)
     if m is None:
-        return {"map": None}
-    return _map_dict(m)
+        return {"map": None, "tokens": [], "fog": []}
+    return {"map": _map_dict(m), "tokens": _tokens_dm(db, m.id), "fog": _fog_ops(db, m.id)}
+
+
+def _tokens_dm(db: Session, map_id: int) -> list[dict]:
+    return []  # Task 12 fills this
+
+
+def _fog_ops(db: Session, map_id: int) -> list[dict]:
+    return []  # Task 21 fills this
 
 
 def _map_dict(m: Map) -> dict:

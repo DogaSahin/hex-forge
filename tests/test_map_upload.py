@@ -29,9 +29,9 @@ def test_image_upload_stores_path_and_dims():
     r = client.post(f"/map/{mid}/image", files=files)
     assert r.status_code == 200
     state = client.get(f"/map/{mid}/state").json()
-    assert state["image_path"].startswith("maps/")
-    assert state["image_w"] == 320
-    assert state["image_h"] == 200
+    assert state["map"]["image_path"].startswith("maps/")
+    assert state["map"]["image_w"] == 320
+    assert state["map"]["image_h"] == 200
 
 
 def test_unsupported_type_rejected():
@@ -41,4 +41,4 @@ def test_unsupported_type_rejected():
     client.post(f"/map/{mid}/image", files=files)
     # request succeeds but image is not stored
     state = client.get(f"/map/{mid}/state").json()
-    assert state["image_path"] is None
+    assert state["map"]["image_path"] is None

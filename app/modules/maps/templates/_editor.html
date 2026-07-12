@@ -1,0 +1,35 @@
+{# app/modules/maps/templates/_editor.html #}
+{% if map is none %}
+<p class="muted">Map not found.</p>
+{% else %}
+<div class="map-editor" x-data="{ tool: 'select', snap: true }">
+  <div class="map-toolbar">
+    <strong>{{ map.name }}</strong>
+    <div class="tool-strip">
+      <button :class="{active: tool==='select'}" @click="tool='select'">Select</button>
+      <button :class="{active: tool==='measure'}" @click="tool='measure'">Measure</button>
+      <button :class="{active: tool==='reveal-rect'}" @click="tool='reveal-rect'">Reveal ▭</button>
+      <button :class="{active: tool==='reveal-brush'}" @click="tool='reveal-brush'">Reveal ✎</button>
+      <button :class="{active: tool==='hide'}" @click="tool='hide'">Hide</button>
+      <label><input type="checkbox" x-model="snap"> Snap</label>
+    </div>
+    <form hx-post="/map/{{ map.id }}/image" hx-encoding="multipart/form-data"
+          hx-target="#map-editor" hx-swap="innerHTML">
+      <input type="file" name="image" accept="image/*">
+      <button type="submit" class="btn">Upload map</button>
+    </form>
+    <form hx-post="/map/{{ map.id }}/set-active" hx-target="#map-list" hx-swap="outerHTML">
+      <button type="submit" class="btn btn-accent">Push to players</button>
+    </form>
+  </div>
+  <div class="map-canvas-wrap">
+    <div id="map-stage" data-map-id="{{ map.id }}" data-mode="dm"
+         x-bind:data-tool="tool" x-bind:data-snap="snap"></div>
+  </div>
+  {% include "_settings.html" %}
+</div>
+<script type="module">
+  import { mountEditor } from "/static/maps/map.js";
+  mountEditor(document.getElementById("map-stage"));
+</script>
+{% endif %}
