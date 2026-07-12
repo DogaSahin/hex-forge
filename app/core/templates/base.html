@@ -15,7 +15,7 @@
   <div class="app-main">
     <header class="topbar">
       <div class="topbar-left"></div>
-      <div class="topbar-actions">{% block topbar_actions %}{% include "_campaign_selector.html" %}{% endblock %}</div>
+      <div class="topbar-actions">{% block topbar_actions %}<button type="button" class="btn" onclick="window.open('/player', 'hexforge-player')">Open player screen</button>{% include "_campaign_selector.html" %}{% endblock %}</div>
     </header>
     <main class="content">
       {% block content %}{% endblock %}
