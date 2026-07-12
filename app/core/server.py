@@ -89,7 +89,10 @@ def create_app() -> FastAPI:
         try:
             while True:
                 message = await websocket.receive_json()
-                await manager.publish(message.get("topic", topic), message)
+                if message.get("action") == "subscribe":
+                    manager.subscribe(message.get("topic", topic), websocket)
+                else:
+                    await manager.publish(message.get("topic", topic), message)
         except WebSocketDisconnect:
             pass
         finally:
