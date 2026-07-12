@@ -1,0 +1,21 @@
+{% if encounter %}
+<div id="player-combat"
+     hx-get="/combat/{{ encounter.id }}/player"
+     hx-trigger="combatChanged from:body"
+     hx-target="#player-combat" hx-swap="outerHTML">
+  <h1 class="mirror-title">{{ encounter.name }}</h1>
+  <div class="mirror-round">Round {{ encounter.round }}</div>
+  <ol class="mirror-list">
+    {% for c in rows %}
+    <li class="mirror-row{{ ' is-active' if c.is_active else '' }}">
+      <span class="mirror-name">{{ c.name }}{% if c.is_pc %} <span class="chip">PC</span>{% endif %}</span>
+      <span class="hp-band" data-band="{{ c.band }}"></span>
+    </li>
+    {% else %}
+    <li class="mirror-empty">No combatants yet.</li>
+    {% endfor %}
+  </ol>
+</div>
+{% else %}
+<div id="player-combat" class="mirror-idle">Nothing is being shared.</div>
+{% endif %}

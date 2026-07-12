@@ -13,6 +13,7 @@ from alembic import context
 # Make the project root (hex-forge/) importable so `app...` resolves.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from app.core import broadcast as core_broadcast  # noqa: E402,F401
 from app.core import config as app_config  # noqa: E402
 from app.core import models  # noqa: E402,F401  (register tables on Base.metadata)
 from app.core.database import Base  # noqa: E402

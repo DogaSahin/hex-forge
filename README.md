@@ -50,8 +50,14 @@ Early and actively built. Working today:
     the round on wrap;
   - changes **sync live** — open the tracker in a second window (e.g. on another screen) and it mirrors
     the first as you play.
+- **Player Screen** (`/player`) — a read-only second view for a TV or second monitor. Click **Open
+  player screen** in the top bar to launch it, then set an encounter active in the Combat Tracker and the
+  player view mirrors it **live**: initiative order, names, whose turn it is, and a color-banded health
+  indicator per combatant. It deliberately shows **no hidden information** — no HP numbers, no AC, no
+  conditions, no DM controls — so the table sees only what you choose to present. When nothing is active
+  it simply shows a "nothing is being shared" screen.
 
-The read-only player screen and further modules (maps with fog) are on the way.
+Further modules (maps with fog) are on the way.
 
 ## Tech stack
 
@@ -72,8 +78,10 @@ python -m venv .venv
 .venv/Scripts/uvicorn main:app --reload --port 8000
 ```
 
-Then open <http://localhost:8000> for the DM interface. Your data is stored under `data/` (the SQLite
-database and uploaded media), which stays on your machine and out of version control.
+Then open <http://localhost:8000> for the DM interface, and use the **Open player screen** button (or
+open <http://localhost:8000/player>) in a second window for the read-only table view. Your data is stored
+under `data/` (the SQLite database and uploaded media), which stays on your machine and out of version
+control.
 
 ## Tests
 

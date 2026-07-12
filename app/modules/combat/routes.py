@@ -7,12 +7,14 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
+from app.core import broadcast
 from app.core.campaigns import get_active_campaign
 from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
 from app.core.websocket import manager
 from app.modules.combat.models import CONDITIONS, Combatant, Encounter
+from app.modules.combat.projection import hp_band
 from app.modules.combat.statblock import parse_stats
 
 MODULE_DIR = Path(__file__).resolve().parent
@@ -82,6 +84,7 @@ def _tracker_ctx(request: Request, db: Session, encounter: Encounter | None) -> 
     rows = _combatants(db, encounter.id)
     for c in rows:
         c.cond_list = _conditions(c)  # transient attr for the template; not persisted
+        c.band = hp_band(c.hp_current, c.hp_max)  # shared band (single source of truth)
     return {
         "encounter": encounter,
         "rows": rows,
@@ -142,6 +145,31 @@ def tracker(
     return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(request, db, enc))
 
 
+@router.get("/{encounter_id}/player", response_class=HTMLResponse)
+def player_mirror(
+    request: Request,
+    encounter_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    """Spoiler-safe combat projection for the player screen. Emits ONLY name,
+    is_pc, active flag, and an HP band — never numbers, AC, or conditions."""
+    enc = _owned_encounter(db, encounter_id, campaign.id)
+    rows = _combatants(db, enc.id) if enc is not None else []
+    mirror = [
+        {
+            "name": c.name,
+            "is_pc": c.is_pc,
+            "is_active": enc.active_combatant_id == c.id,
+            "band": hp_band(c.hp_current, c.hp_max),
+        }
+        for c in rows
+    ]
+    return templates.TemplateResponse(
+        request, "_player_mirror.html", {"encounter": enc, "rows": mirror}
+    )
+
+
 @router.post("/{encounter_id}/delete", response_class=HTMLResponse)
 def delete_encounter(
     request: Request,
@@ -162,7 +190,7 @@ def delete_encounter(
 
 
 @router.post("/{encounter_id}/set-active", response_class=HTMLResponse)
-def set_active(
+async def set_active(
     request: Request,
     encounter_id: int,
     db: Session = Depends(get_db),
@@ -175,6 +203,8 @@ def set_active(
         )
         enc.is_active = True
         db.commit()
+        broadcast.set_active_encounter(db, campaign.id, enc.id)
+        await broadcast.publish_changed(campaign.id)
     return templates.TemplateResponse(
         request,
         "_encounter_list.html",

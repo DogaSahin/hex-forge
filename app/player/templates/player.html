@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hexforge — Player Screen</title>
+  <script src="/static/vendor/htmx.min.js" defer></script>
+  <script src="/static/ws.js" defer></script>
+  <style>
+    :root {
+      --bg:#14161a; --fg:#e8e8ea; --muted:#8a8f98;
+      --low:#c0392b; --mid:#d4a017; --high:#3a9d5b; --accent:#e0a44b;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--fg);
+           font-family: system-ui, sans-serif; min-height:100vh; }
+    #stage { max-width: 900px; margin: 0 auto; padding: 4vh 4vw; }
+    .mirror-idle, .mirror-empty { color:var(--muted); font-size:1.4rem;
+           text-align:center; margin-top:18vh; }
+    .mirror-title { font-size:2rem; margin:0 0 .2em; }
+    .mirror-round { color:var(--muted); margin-bottom:1em; }
+    .mirror-list { list-style:none; margin:0; padding:0; }
+    .mirror-row { display:flex; align-items:center; justify-content:space-between;
+           padding:.6em .9em; border-radius:8px; margin-bottom:.4em; background:#1c1f25; }
+    .mirror-row.is-active { outline:2px solid var(--accent); }
+    .mirror-name { font-size:1.3rem; }
+    .chip { font-size:.65em; padding:.15em .5em; border-radius:4px;
+           background:#2a2e36; color:var(--muted); vertical-align:middle; }
+    .hp-band { width:120px; height:14px; border-radius:7px; background:var(--muted); }
+    .hp-band[data-band="low"] { background:var(--low); }
+    .hp-band[data-band="mid"] { background:var(--mid); }
+    .hp-band[data-band="high"] { background:var(--high); }
+  </style>
+</head>
+<body>
+  <div id="stage"><div class="mirror-idle">Connecting…</div></div>
+  <script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var activeEnc = null;
+    function loadMirror(encId) {
+      var stage = document.getElementById("stage");
+      if (encId) {
+        htmx.ajax("GET", "/combat/" + encId + "/player",
+                  { target: "#stage", swap: "innerHTML" });
+      } else {
+        stage.innerHTML = '<div class="mirror-idle">Nothing is being shared.</div>';
+      }
+    }
+    function refreshState() {
+      fetch("/player/state")
+        .then(function (r) { return r.json(); })
+        .then(function (s) {
+          var enc = s.active_encounter_id;
+          if (enc !== activeEnc) {
+            activeEnc = enc;
+            if (enc && window.HexWS) { HexWS.subscribe("combat:" + enc); }
+            loadMirror(enc);
+          }
+        });
+    }
+    if (window.HexWS) {
+      var sock = HexWS.connect("broadcast");
+      HexWS.on("broadcast_changed", function () { refreshState(); });
+      HexWS.on("combat_changed", function (payload, msg) {
+        if (String(msg.encounter_id) === String(activeEnc)) {
+          document.body.dispatchEvent(new CustomEvent("combatChanged"));
+        }
+      });
+      // Fetch the initial snapshot once the socket is open (so combat subscribes land).
+      sock.addEventListener("open", refreshState);
+    }
+  });
+  </script>
+</body>
+</html>

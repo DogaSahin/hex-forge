@@ -17,6 +17,7 @@ from app.core.palette import search_index
 from app.core.registry import Registry
 from app.core.templating import shell_context
 from app.core.websocket import manager
+from app.player.routes import router as player_router
 
 CORE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = CORE_DIR / "static"
@@ -40,6 +41,7 @@ def create_app() -> FastAPI:
     app.state.registry = registry
     for router in registry.routers:
         app.include_router(router)
+    app.include_router(player_router)  # read-only player surface (not a module)
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     app.mount("/media", StaticFiles(directory=str(config.MEDIA_DIR)), name="media")
@@ -89,7 +91,10 @@ def create_app() -> FastAPI:
         try:
             while True:
                 message = await websocket.receive_json()
-                await manager.publish(message.get("topic", topic), message)
+                if message.get("action") == "subscribe":
+                    manager.subscribe(message.get("topic", topic), websocket)
+                else:
+                    await manager.publish(message.get("topic", topic), message)
         except WebSocketDisconnect:
             pass
         finally:
