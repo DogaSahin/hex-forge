@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
 from app.modules.maps.models import Map
+from app.modules.maps.uploads import store_map_image
 
 MODULE_DIR = Path(__file__).resolve().parent
 templates = module_templates(MODULE_DIR)
@@ -91,3 +92,51 @@ def _delete_map_children(db: Session, map_id: int) -> None:
         db.query(FogRegion).filter_by(map_id=map_id).delete(synchronize_session=False)
     except ImportError:
         pass
+
+
+@router.post("/{map_id}/image", response_class=HTMLResponse)
+def upload_image(
+    request: Request,
+    map_id: int,
+    image: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    m = _owned_map(db, map_id, campaign.id)
+    if m is not None:
+        rel, w, h, error = store_map_image(image)
+        if rel and not error:
+            m.image_path, m.image_w, m.image_h = rel, w, h
+            db.commit()
+    return templates.TemplateResponse(
+        request, "_map_list.html", {"maps": _maps(db, campaign.id), "active_id": map_id}
+    )
+
+
+@router.get("/{map_id}/state")
+def map_state(
+    map_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> dict:
+    m = _owned_map(db, map_id, campaign.id)
+    if m is None:
+        return {"map": None}
+    return _map_dict(m)
+
+
+def _map_dict(m: Map) -> dict:
+    return {
+        "id": m.id,
+        "name": m.name,
+        "image_path": m.image_path,
+        "image_w": m.image_w,
+        "image_h": m.image_h,
+        "grid_size_px": m.grid_size_px,
+        "grid_offset_x": m.grid_offset_x,
+        "grid_offset_y": m.grid_offset_y,
+        "grid_visible": m.grid_visible,
+        "feet_per_square": m.feet_per_square,
+        "diagonal_rule": m.diagonal_rule,
+        "is_active": m.is_active,
+    }
