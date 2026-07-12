@@ -190,6 +190,59 @@ def test_sort_by_initiative_orders_desc():
     client.post(f"/combat/{eid}/delete")
 
 
+def _one_combatant(name, initiative=10, hp_max=30, hp_current=30):
+    client.post("/combat", data={"name": name})
+    eid = _enc_id(name)
+    client.post(
+        f"/combat/{eid}/combatant",
+        data={
+            "name": "T",
+            "initiative": str(initiative),
+            "hp_max": str(hp_max),
+            "hp_current": str(hp_current),
+        },
+    )
+    db = SessionLocal()
+    try:
+        cid = db.query(Combatant).filter_by(encounter_id=eid).first().id
+    finally:
+        db.close()
+    return eid, cid
+
+
+def test_damage_clamps_at_zero():
+    eid, cid = _one_combatant("Plan-Test Dmg", hp_max=30, hp_current=30)
+    client.post(f"/combat/combatant/{cid}/damage", data={"amount": "100"})
+    db = SessionLocal()
+    try:
+        assert db.get(Combatant, cid).hp_current == 0
+    finally:
+        db.close()
+    client.post(f"/combat/{eid}/delete")
+
+
+def test_heal_clamps_at_max():
+    eid, cid = _one_combatant("Plan-Test Heal", hp_max=30, hp_current=10)
+    client.post(f"/combat/combatant/{cid}/heal", data={"amount": "999"})
+    db = SessionLocal()
+    try:
+        assert db.get(Combatant, cid).hp_current == 30
+    finally:
+        db.close()
+    client.post(f"/combat/{eid}/delete")
+
+
+def test_ac_edit_persists():
+    eid, cid = _one_combatant("Plan-Test AC")
+    client.post(f"/combat/combatant/{cid}/ac", data={"ac": "18"})
+    db = SessionLocal()
+    try:
+        assert db.get(Combatant, cid).ac == 18
+    finally:
+        db.close()
+    client.post(f"/combat/{eid}/delete")
+
+
 def test_reorder_persists_dragged_order():
     client.post("/combat", data={"name": "Plan-Test Reorder"})
     eid = _enc_id("Plan-Test Reorder")

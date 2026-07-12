@@ -329,3 +329,58 @@ async def reorder(
         db.commit()
         await _notify(enc.id)
     return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(request, db, enc))
+
+
+def _clamp_hp(current: int, hp_max: int) -> int:
+    if hp_max <= 0:
+        return max(0, current)
+    return max(0, min(current, hp_max))
+
+
+@router.post("/combatant/{combatant_id}/damage", response_class=HTMLResponse)
+async def damage(
+    request: Request,
+    combatant_id: int,
+    amount: str = Form("0"),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    return await _apply_hp(request, combatant_id, -_int_or(amount, 0), db, campaign)
+
+
+@router.post("/combatant/{combatant_id}/heal", response_class=HTMLResponse)
+async def heal(
+    request: Request,
+    combatant_id: int,
+    amount: str = Form("0"),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    return await _apply_hp(request, combatant_id, _int_or(amount, 0), db, campaign)
+
+
+async def _apply_hp(request, combatant_id, delta, db, campaign) -> HTMLResponse:
+    c = _owned_combatant(db, combatant_id, campaign.id)
+    enc = db.get(Encounter, c.encounter_id) if c is not None else None
+    if c is not None:
+        c.hp_current = _clamp_hp(c.hp_current + delta, c.hp_max)
+        db.commit()
+        await _notify(enc.id)
+    return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(request, db, enc))
+
+
+@router.post("/combatant/{combatant_id}/ac", response_class=HTMLResponse)
+async def edit_ac(
+    request: Request,
+    combatant_id: int,
+    ac: str = Form(""),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    c = _owned_combatant(db, combatant_id, campaign.id)
+    enc = db.get(Encounter, c.encounter_id) if c is not None else None
+    if c is not None:
+        c.ac = _int_or_none(ac)
+        db.commit()
+        await _notify(enc.id)
+    return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(request, db, enc))
