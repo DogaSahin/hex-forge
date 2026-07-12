@@ -167,3 +167,51 @@ def test_delete_combatant_in_other_campaign_is_refused():
     finally:
         db.close()
     client.post(f"/combat/{eid}/delete")
+
+
+def test_sort_by_initiative_orders_desc():
+    client.post("/combat", data={"name": "Plan-Test Sort"})
+    eid = _enc_id("Plan-Test Sort")
+    client.post(f"/combat/{eid}/combatant", data={"name": "Slow", "initiative": "3"})
+    client.post(f"/combat/{eid}/combatant", data={"name": "Fast", "initiative": "21"})
+    client.post(f"/combat/{eid}/combatant", data={"name": "Mid", "initiative": "12"})
+    client.post(f"/combat/{eid}/sort")
+    db = SessionLocal()
+    try:
+        rows = (
+            db.query(Combatant)
+            .filter_by(encounter_id=eid)
+            .order_by(Combatant.sort_order, Combatant.id)
+            .all()
+        )
+        assert [r.name for r in rows] == ["Fast", "Mid", "Slow"]
+    finally:
+        db.close()
+    client.post(f"/combat/{eid}/delete")
+
+
+def test_reorder_persists_dragged_order():
+    client.post("/combat", data={"name": "Plan-Test Reorder"})
+    eid = _enc_id("Plan-Test Reorder")
+    client.post(f"/combat/{eid}/combatant", data={"name": "One", "initiative": "10"})
+    client.post(f"/combat/{eid}/combatant", data={"name": "Two", "initiative": "10"})
+    db = SessionLocal()
+    try:
+        rows = db.query(Combatant).filter_by(encounter_id=eid).order_by(Combatant.id).all()
+        one, two = rows[0].id, rows[1].id
+    finally:
+        db.close()
+    # drag Two above One
+    client.post(f"/combat/{eid}/reorder", data={"order": f"{two},{one}"})
+    db = SessionLocal()
+    try:
+        ordered = (
+            db.query(Combatant)
+            .filter_by(encounter_id=eid)
+            .order_by(Combatant.sort_order, Combatant.id)
+            .all()
+        )
+        assert [r.id for r in ordered] == [two, one]
+    finally:
+        db.close()
+    client.post(f"/combat/{eid}/delete")

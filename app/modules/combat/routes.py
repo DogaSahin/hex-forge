@@ -292,3 +292,40 @@ def add_npc_form(
                 "npc_id": str(nid),
             }
     return templates.TemplateResponse(request, "_combatant_form.html", ctx)
+
+
+@router.post("/{encounter_id}/sort", response_class=HTMLResponse)
+async def sort_by_initiative(
+    request: Request,
+    encounter_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    enc = _owned_encounter(db, encounter_id, campaign.id)
+    if enc is not None:
+        rows = sorted(_combatants(db, enc.id), key=lambda c: (-c.initiative, c.id))
+        for i, c in enumerate(rows):
+            c.sort_order = i
+        db.commit()
+        await _notify(enc.id)
+    return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(request, db, enc))
+
+
+@router.post("/{encounter_id}/reorder", response_class=HTMLResponse)
+async def reorder(
+    request: Request,
+    encounter_id: int,
+    order: str = Form(""),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    enc = _owned_encounter(db, encounter_id, campaign.id)
+    if enc is not None:
+        ids = [int(x) for x in order.split(",") if x.strip().isdigit()]
+        rank = {cid: i for i, cid in enumerate(ids)}
+        for c in _combatants(db, enc.id):
+            if c.id in rank:
+                c.sort_order = rank[c.id]
+        db.commit()
+        await _notify(enc.id)
+    return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(request, db, enc))

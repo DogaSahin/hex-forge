@@ -15,3 +15,36 @@
   {% include "_tracker.html" %}
 </section>
 {% endblock %}
+{% block scripts %}
+<script src="/static/vendor/sortable.min.js" defer></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  function encId() {
+    var t = document.getElementById("tracker");
+    return t ? t.getAttribute("data-encounter-id") : null;
+  }
+  function initSortable() {
+    var list = document.getElementById("combatant-rows");
+    if (list && window.Sortable && !list.dataset.sortable) {
+      list.dataset.sortable = "1";
+      Sortable.create(list, {
+        handle: ".drag-handle",
+        onEnd: function () {
+          var ids = Array.prototype.slice
+            .call(list.querySelectorAll("[data-id]"))
+            .map(function (el) { return el.getAttribute("data-id"); });
+          var id = encId();
+          if (id) {
+            htmx.ajax("POST", "/combat/" + id + "/reorder", {
+              target: "#tracker", swap: "outerHTML", values: { order: ids.join(",") },
+            });
+          }
+        },
+      });
+    }
+  }
+  initSortable();
+  document.body.addEventListener("htmx:afterSwap", initSortable);
+});
+</script>
+{% endblock %}
