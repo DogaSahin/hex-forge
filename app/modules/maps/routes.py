@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
@@ -46,3 +46,48 @@ def index(
     ctx["maps"] = maps
     ctx["active_id"] = None
     return templates.TemplateResponse(request, "index.html", ctx)
+
+
+@router.post("", response_class=HTMLResponse)
+def create_map(
+    request: Request,
+    name: str = Form(...),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    if name.strip():
+        db.add(Map(campaign_id=campaign.id, name=name.strip()))
+        db.commit()
+    return templates.TemplateResponse(
+        request, "_map_list.html", {"maps": _maps(db, campaign.id), "active_id": None}
+    )
+
+
+@router.post("/{map_id}/delete", response_class=HTMLResponse)
+def delete_map(
+    request: Request,
+    map_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    m = _owned_map(db, map_id, campaign.id)
+    if m is not None:
+        # Token/FogRegion rows are cleaned here (tables arrive in Tasks 9/20;
+        # these deletes are guarded so this works before and after those tables exist).
+        _delete_map_children(db, m.id)
+        db.delete(m)
+        db.commit()
+    return templates.TemplateResponse(
+        request, "_map_list.html", {"maps": _maps(db, campaign.id), "active_id": None}
+    )
+
+
+def _delete_map_children(db: Session, map_id: int) -> None:
+    """Remove tokens + fog for a map. No-ops cleanly until those tables exist."""
+    try:
+        from app.modules.maps.models import FogRegion, Token
+
+        db.query(Token).filter_by(map_id=map_id).delete(synchronize_session=False)
+        db.query(FogRegion).filter_by(map_id=map_id).delete(synchronize_session=False)
+    except ImportError:
+        pass
