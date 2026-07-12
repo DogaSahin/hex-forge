@@ -15,3 +15,9 @@ def test_offset_respected():
 
 def test_zero_size_returns_input():
     assert snap_to_grid(33, 44, 0, 0, 0) == (33, 44)
+
+
+def test_half_cell_rounds_up_matching_js_math_round():
+    # Exact half-cell input: (35-0)/70 = 0.5. JS Math.round(0.5) == 1 -> 70.
+    # Python's banker's round(0.5) would give 0; half-up must match the JS mirror.
+    assert snap_to_grid(35, 105, 70, 0, 0) == (70, 140)
