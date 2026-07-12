@@ -54,3 +54,16 @@ def test_jump_provider_registration_and_union():
     targets = reg.jump_targets(None, 1)
     labels = {t["label"] for t in targets}
     assert labels == {"X1", "Y1"}
+
+
+def test_entity_detail_registers_and_resolves():
+    reg = Registry()
+    kael_detail = {"name": "Kael", "statblock": '{"hp": 22}'}
+    reg.add_entity_detail_provider("npc", lambda db, eid, cid: kael_detail if eid == 1 else None)
+    assert reg.entity_detail("npc", 1, db=None, campaign_id=9) == kael_detail
+    assert reg.entity_detail("npc", 2, db=None, campaign_id=9) is None
+
+
+def test_entity_detail_unknown_kind_returns_none():
+    reg = Registry()
+    assert reg.entity_detail("npc", 1, db=None, campaign_id=1) is None

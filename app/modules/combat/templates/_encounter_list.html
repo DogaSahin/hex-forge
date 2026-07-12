@@ -1,0 +1,17 @@
+<ul class="list">
+  {% for e in encounters %}
+  <li class="list-row{{ ' active' if active_id == e.id else '' }}">
+    <button class="list-row-main" hx-get="/combat/{{ e.id }}" hx-target="#tracker" hx-swap="outerHTML">
+      {{ e.name }}{% if e.is_active %} <span class="chip">live</span>{% endif %}
+    </button>
+    <form hx-post="/combat/{{ e.id }}/set-active" hx-target="#encounter-list" hx-swap="innerHTML">
+      <button class="btn" type="submit" title="Show on the (future) player screen">Set live</button>
+    </form>
+    <form hx-post="/combat/{{ e.id }}/delete" hx-target="#encounter-list" hx-swap="innerHTML">
+      <button class="btn" type="submit" title="Delete encounter">✕</button>
+    </form>
+  </li>
+  {% else %}
+  <li class="muted">No encounters yet.</li>
+  {% endfor %}
+</ul>

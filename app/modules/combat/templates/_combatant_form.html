@@ -1,0 +1,26 @@
+{% set p = prefill|default(None) %}
+<form class="combatant-form" hx-post="/combat/{{ encounter.id }}/combatant"
+      hx-target="#tracker" hx-swap="outerHTML">
+  <input class="input" type="text" name="name" placeholder="Name" required
+         value="{{ p.name if p else '' }}">
+  <input class="input init-input" type="number" name="initiative" value="0" title="Initiative">
+  <input class="input hp-input" type="number" name="hp_max" title="Max HP"
+         value="{{ p.hp_max if p else 0 }}">
+  <input class="input hp-input" type="hidden" name="hp_current"
+         value="{{ p.hp_current if p else '' }}">
+  <input class="input ac-input" type="number" name="ac" placeholder="AC" title="AC"
+         value="{{ p.ac if p else '' }}">
+  <input type="hidden" name="npc_id" value="{{ p.npc_id if p else '' }}">
+  <label class="pc-check"><input type="checkbox" name="is_pc" value="1"> PC</label>
+  <button class="btn btn-primary" type="submit">Add</button>
+</form>
+
+<form class="npc-picker" hx-get="/combat/{{ encounter.id }}/add-npc"
+      hx-target="#add-combatant" hx-swap="innerHTML" hx-trigger="change">
+  <select class="input" name="npc_id">
+    <option value="">— add from NPC —</option>
+    {% for nid, nname in npc_options|default([]) %}
+    <option value="{{ nid }}"{{ ' selected' if p and p.npc_id == (nid|string) else '' }}>{{ nname }}</option>
+    {% endfor %}
+  </select>
+</form>

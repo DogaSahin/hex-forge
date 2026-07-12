@@ -418,3 +418,11 @@ def register_entities(registry) -> None:
 def npc_jump(db: Session, campaign_id: int) -> list[dict]:
     rows = db.query(Npc).filter_by(campaign_id=campaign_id).order_by(Npc.name).all()
     return [{"label": n.name, "url": f"/npcs/{n.id}", "kind": "npc"} for n in rows]
+
+
+def npc_detail(db: Session, npc_id: int, campaign_id: int) -> dict | None:
+    """Detail-registry provider: name + statblock for one NPC, campaign-scoped."""
+    n = db.get(Npc, npc_id)
+    if n is None or n.campaign_id != campaign_id:
+        return None
+    return {"name": n.name, "statblock": n.statblock}

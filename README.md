@@ -40,8 +40,18 @@ Early and actively built. Working today:
   - **categories and tags** for organizing and filtering the page list, with quick add/remove of tags;
   - **search** across page titles and bodies;
   - pages, NPCs, and factions are all reachable from the **command palette** (Ctrl-K).
+- **Combat Tracker** (`/combat`) — run encounters scoped to the active campaign:
+  - build an encounter and add combatants by hand or **from an existing NPC** (pulling its name, and
+    its HP/AC when the statblock is structured);
+  - order the initiative list and **drag to reorder**, then run the fight: apply **damage/heal** with an
+    HP bar that shades green→amber→red, edit AC, toggle **conditions** (the standard set plus your own
+    custom ones) and a **concentration** flag;
+  - a round counter and an active-combatant marker with **Next turn**, which advances the turn and bumps
+    the round on wrap;
+  - changes **sync live** — open the tracker in a second window (e.g. on another screen) and it mirrors
+    the first as you play.
 
-The read-only player screen and further modules (combat tracker, maps with fog) are on the way.
+The read-only player screen and further modules (maps with fog) are on the way.
 
 ## Tech stack
 

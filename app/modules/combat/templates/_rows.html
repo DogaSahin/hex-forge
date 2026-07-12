@@ -1,0 +1,70 @@
+<ul id="combatant-rows" class="combatant-rows">
+  {% for c in rows %}
+  <li class="combatant-row{{ ' is-active' if encounter.active_combatant_id == c.id else '' }}"
+      data-id="{{ c.id }}">
+    <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+    <span class="init-chip">{{ c.initiative }}</span>
+    <span class="combatant-name">{{ c.name }}{% if c.is_pc %} <span class="chip">PC</span>{% endif %}</span>
+
+    <span class="conditions">
+      {% for cond in c.cond_list %}
+      <span class="chip">{{ cond }}<button class="chip-x"
+          hx-post="/combat/combatant/{{ c.id }}/condition"
+          hx-vals='{"name": {{ cond|tojson }}, "op": "remove"}'
+          hx-target="#tracker" hx-swap="outerHTML">×</button></span>
+      {% endfor %}
+      {% if c.concentration %}<span class="chip badge-wary">Conc.</span>{% endif %}
+    </span>
+
+    {% set ratio = (c.hp_current / c.hp_max) if c.hp_max else 0 %}
+    {% set band = 'low' if ratio <= 0.25 else ('mid' if ratio <= 0.5 else 'high') %}
+    <span class="hp">
+      <span class="hp-bar" data-band="{{ band }}" style="--ratio: {{ ratio }}"></span>
+      <span class="hp-text">{{ c.hp_current }}/{{ c.hp_max }}</span>
+      <form class="hp-form" hx-post="/combat/combatant/{{ c.id }}/damage"
+            hx-target="#tracker" hx-swap="outerHTML">
+        <input class="input hp-input" type="number" name="amount" value="1" min="0">
+        <button class="btn" type="submit" title="Damage">−</button>
+      </form>
+      <form class="hp-form" hx-post="/combat/combatant/{{ c.id }}/heal"
+            hx-target="#tracker" hx-swap="outerHTML">
+        <input class="input hp-input" type="number" name="amount" value="1" min="0">
+        <button class="btn" type="submit" title="Heal">+</button>
+      </form>
+    </span>
+
+    <form class="ac-form" hx-post="/combat/combatant/{{ c.id }}/ac"
+          hx-target="#tracker" hx-swap="outerHTML">
+      AC <input class="input ac-input" type="number" name="ac"
+                value="{{ c.ac if c.ac is not none else '' }}">
+    </form>
+
+    <button class="btn" hx-post="/combat/combatant/{{ c.id }}/concentration"
+            hx-target="#tracker" hx-swap="outerHTML">Conc</button>
+
+    <span class="add-cond">
+      <form hx-post="/combat/combatant/{{ c.id }}/condition"
+            hx-target="#tracker" hx-swap="outerHTML">
+        <select class="input" name="name">
+          {% for cond in conditions_all %}<option value="{{ cond }}">{{ cond }}</option>{% endfor %}
+        </select>
+        <input type="hidden" name="op" value="add">
+        <button class="btn" type="submit">+cond</button>
+      </form>
+      <form hx-post="/combat/combatant/{{ c.id }}/condition"
+            hx-target="#tracker" hx-swap="outerHTML">
+        <input class="input" type="text" name="name" placeholder="custom">
+        <input type="hidden" name="op" value="add">
+        <button class="btn" type="submit">+</button>
+      </form>
+    </span>
+
+    <form hx-post="/combat/combatant/{{ c.id }}/delete"
+          hx-target="#tracker" hx-swap="outerHTML">
+      <button class="btn" type="submit">Remove</button>
+    </form>
+  </li>
+  {% else %}
+  <li class="muted">No combatants yet.</li>
+  {% endfor %}
+</ul>
