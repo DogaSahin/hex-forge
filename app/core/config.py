@@ -26,6 +26,7 @@ ENABLED_MODULES: list[str] = [
     "app.modules.npcs",
     "app.modules.wiki",
     "app.modules.combat",
+    "app.modules.maps",
 ]
 
 # Grid defaults (spec §6.2).
