@@ -1,0 +1,35 @@
+{% if not page %}
+  <p class="muted">Select a page, or create one.</p>
+{% else %}
+  <div class="detail-head">
+    <h2>{{ page.title }}</h2>
+    {% if page.category %}<span class="chip">{{ page.category }}</span>{% endif %}
+    <button class="btn" hx-get="/wiki/{{ page.slug }}/edit" hx-target="#wiki-detail" hx-swap="innerHTML">Edit</button>
+    <button class="btn" hx-post="/wiki/{{ page.slug }}/delete" hx-target="#wiki-list" hx-swap="innerHTML"
+            hx-confirm="Delete this page?">Delete</button>
+  </div>
+  <article class="wiki-body">{{ body_html | safe }}</article>
+  {% if backlinks %}
+    <section class="wiki-backlinks">
+      <h3>Mentioned on</h3>
+      <ul class="list">
+        {% for b in backlinks %}
+          <li class="list-row">
+            <a hx-get="/wiki/{{ b.slug }}" hx-target="#wiki-detail" hx-swap="innerHTML">{{ b.title }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+  <section class="wiki-tags">
+    {% for t in tags %}
+      <span class="chip">{{ t.name }}
+        <button class="chip-x" hx-post="/wiki/{{ page.slug }}/tags/{{ t.id }}/delete"
+                hx-target="#wiki-detail" hx-swap="innerHTML" title="Remove tag">×</button>
+      </span>
+    {% endfor %}
+    <form class="tag-add" hx-post="/wiki/{{ page.slug }}/tags" hx-target="#wiki-detail" hx-swap="innerHTML">
+      <input class="input" type="text" name="name" placeholder="add tag…">
+    </form>
+  </section>
+{% endif %}

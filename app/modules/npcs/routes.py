@@ -413,3 +413,8 @@ def delete(
 
 def register_entities(registry) -> None:
     registry.add_entity_provider("npc", npc_entities)
+
+
+def npc_jump(db: Session, campaign_id: int) -> list[dict]:
+    rows = db.query(Npc).filter_by(campaign_id=campaign_id).order_by(Npc.name).all()
+    return [{"label": n.name, "url": f"/npcs/{n.id}", "kind": "npc"} for n in rows]

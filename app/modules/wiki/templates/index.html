@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Wiki — Hexforge{% endblock %}
+{% block content %}
+<section class="wiki two-pane">
+  <aside class="roster panel">
+    <div class="roster-head">
+      <h1>Wiki</h1>
+      <button class="btn btn-primary" hx-get="/wiki/new" hx-target="#wiki-detail" hx-swap="innerHTML">+ New</button>
+    </div>
+    <form class="roster-filter" hx-get="/wiki/search" hx-target="#wiki-list" hx-swap="innerHTML"
+          hx-trigger="input changed delay:250ms from:input[name='q']">
+      <input class="input" type="search" name="q" placeholder="Search pages…">
+    </form>
+    <form class="roster-filter" hx-get="/wiki" hx-target="#wiki-list" hx-swap="innerHTML" hx-trigger="change">
+      <select class="input" name="category">
+        <option value="">All categories</option>
+        {% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+      </select>
+      <select class="input" name="tag">
+        <option value="">All tags</option>
+        {% for t in tags %}<option value="{{ t.name }}">{{ t.name }}</option>{% endfor %}
+      </select>
+    </form>
+    <div id="wiki-list">{% include "_list.html" %}</div>
+  </aside>
+
+  <section id="wiki-detail" class="detail card">{% include "_detail.html" %}</section>
+</section>
+{% endblock %}

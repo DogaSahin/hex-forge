@@ -147,3 +147,14 @@ body.app {
 .rel-form { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
 .rel-source { margin: 0.6rem 0 0.2rem; }
 .rel-row { gap: 0.6rem; align-items: center; }
+
+/* ---- Wiki (Epic 5) ---- */
+.wiki-body { line-height: 1.6; }
+.wiki-body h1, .wiki-body h2, .wiki-body h3 { margin: 0.8em 0 0.3em; }
+.wiki-body pre { overflow-x: auto; padding: var(--pad-2); background: var(--surface-2); border-radius: var(--radius); }
+.wikilink { color: var(--accent); text-decoration: underline; }
+.wikilink-new { color: var(--warning); border-bottom: 1px dashed currentColor; text-decoration: none; }
+.wiki-backlinks { margin-top: 1.2rem; }
+.wiki-tags { margin-top: 1rem; display: flex; gap: var(--gap-2); flex-wrap: wrap; align-items: center; }
+.chip-x { background: none; border: none; cursor: pointer; color: inherit; padding: 0 0 0 4px; font: inherit; }
+.tag-add { display: flex; gap: var(--gap-2); align-items: center; }

@@ -1,0 +1,17 @@
+{% set action = "/wiki/" ~ page.slug if page else "/wiki" %}
+<form class="wiki-form" hx-post="{{ action }}"
+      hx-target="#wiki-detail" hx-swap="innerHTML">
+  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+  <label>Title
+    <input class="input" type="text" name="title" required
+           value="{{ page.title if page else prefill_title }}">
+  </label>
+  <label>Category
+    <input class="input" type="text" name="category"
+           value="{{ page.category or '' if page else '' }}">
+  </label>
+  <label>Body (markdown, use [[Name]] to link)
+    <textarea class="input" name="body_md" rows="12">{{ page.body_md or '' if page else '' }}</textarea>
+  </label>
+  <button class="btn btn-primary" type="submit">Save</button>
+</form>

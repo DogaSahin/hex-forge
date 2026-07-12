@@ -1,0 +1,13 @@
+{% if not q %}
+  <p class="muted">Type to search pages.</p>
+{% elif not results %}
+  <p class="muted">No pages match "{{ q }}".</p>
+{% else %}
+  <ul class="list">
+    {% for p in results %}
+      <li class="list-row">
+        <a hx-get="/wiki/{{ p.slug }}" hx-target="#wiki-detail" hx-swap="innerHTML" hx-push-url="false">{{ p.title }}</a>
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}
