@@ -10,6 +10,7 @@ from app.core.campaigns import get_active_campaign
 from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
+from app.core.websocket import manager
 from app.modules.maps.models import DIAGONAL_RULES, Map, Token
 from app.modules.maps.uploads import store_map_image, store_token_image
 
@@ -254,6 +255,33 @@ def _map_dict(m: Map) -> dict:
         "diagonal_rule": m.diagonal_rule,
         "is_active": m.is_active,
     }
+
+
+async def _publish_token_move(t: Token) -> None:
+    """Publish a positional delta. Topic gating (player-safe vs dm) lands in Task 28;
+    for now publish on the player-safe topic."""
+    await manager.publish(
+        f"map:{t.map_id}",
+        {"action": "token.move", "map_id": t.map_id, "token_id": t.id, "x": t.x, "y": t.y},
+    )
+
+
+@token_router.post("/{token_id}/move")
+async def move_token(
+    token_id: int,
+    x: str = Form("0"),
+    y: str = Form("0"),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> dict:
+    t = _owned_token(db, token_id, campaign.id)
+    if t is None:
+        return {"ok": False}
+    t.x = _int_or(x, t.x)
+    t.y = _int_or(y, t.y)
+    db.commit()
+    await _publish_token_move(t)
+    return {"ok": True}
 
 
 @token_router.post("/{token_id}/image", response_class=HTMLResponse)

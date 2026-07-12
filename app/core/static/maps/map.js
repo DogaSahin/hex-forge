@@ -1,4 +1,5 @@
 import { LAYER_FACTORIES } from "./layers/index.js";
+import { snapToGrid } from "./snap.js";
 
 export function mountEditor(host) {
   if (!host || host.dataset.mounted) return;
@@ -17,11 +18,33 @@ export function mountEditor(host) {
   async function refresh() {
     const state = await fetch(stateUrl).then((r) => r.json());
     if (!state.map) return;
+    host._lastState = state;
     stage.size({ width: state.map.image_w || 1200, height: state.map.image_h || 800 });
     layers.forEach((l) => l.inst.render(state));
   }
   refresh();
   host.addEventListener("map:refresh", refresh);
+
+  const tokensLayer = layers.find((l) => l.name === "tokens");
+  if (tokensLayer && mode === "dm") {
+    tokensLayer.inst.konvaLayer.on("dragend", async (e) => {
+      const group = e.target.hasName ? e.target : e.target.findAncestor("Group");
+      const tid = group.getAttr("tokenId");
+      if (!tid) return;
+      const st = host._lastState || {};
+      const m = st.map || {};
+      let { x, y } = group.position();
+      if (host.dataset.snap === "true") {
+        const s = snapToGrid(x, y, m.grid_size_px, m.grid_offset_x, m.grid_offset_y);
+        x = s.x;
+        y = s.y;
+        group.position({ x, y });
+        group.getLayer().draw();
+      }
+      const body = new URLSearchParams({ x: Math.round(x), y: Math.round(y) });
+      await fetch(`/token/${tid}/move`, { method: "POST", body });
+    });
+  }
 
   // WS wiring is added in Slice 6; expose the layer table for those tasks.
   host._hexLayers = layers;
