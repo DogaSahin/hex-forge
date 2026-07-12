@@ -1,0 +1,24 @@
+{% if encounter %}
+<section id="tracker" class="detail card"
+         data-encounter-id="{{ encounter.id }}"
+         hx-get="/combat/{{ encounter.id }}"
+         hx-trigger="combatChanged from:body"
+         hx-target="#tracker" hx-swap="outerHTML">
+  <header class="tracker-head">
+    <h2>{{ encounter.name }}</h2>
+    <div class="tracker-round">Round {{ encounter.round }}</div>
+    <div class="tracker-controls">
+      <button class="btn" hx-post="/combat/{{ encounter.id }}/sort"
+              hx-target="#tracker" hx-swap="outerHTML">Sort by initiative</button>
+      <button class="btn btn-primary" hx-post="/combat/{{ encounter.id }}/next-turn"
+              hx-target="#tracker" hx-swap="outerHTML">Next turn ▶</button>
+    </div>
+  </header>
+  <div id="add-combatant">{% include "_combatant_form.html" %}</div>
+  {% include "_rows.html" %}
+</section>
+{% else %}
+<section id="tracker" class="detail card">
+  <p class="muted">Select or create an encounter.</p>
+</section>
+{% endif %}

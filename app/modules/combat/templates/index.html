@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Combat — Hexforge{% endblock %}
+{% block content %}
+<section class="combat two-pane">
+  <aside class="roster panel">
+    <div class="roster-head">
+      <h1>Combat</h1>
+    </div>
+    <form class="roster-filter" hx-post="/combat" hx-target="#encounter-list" hx-swap="innerHTML">
+      <input class="input" type="text" name="name" placeholder="New encounter…" required>
+      <button class="btn btn-primary" type="submit">+</button>
+    </form>
+    <div id="encounter-list">{% include "_encounter_list.html" %}</div>
+  </aside>
+  {% include "_tracker.html" %}
+</section>
+{% endblock %}

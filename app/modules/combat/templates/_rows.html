@@ -1,0 +1,7 @@
+<ul id="combatant-rows" class="combatant-rows">
+  {% for c in rows %}
+  <li class="combatant-row" data-id="{{ c.id }}">{{ c.name }}</li>
+  {% else %}
+  <li class="muted">No combatants yet.</li>
+  {% endfor %}
+</ul>
