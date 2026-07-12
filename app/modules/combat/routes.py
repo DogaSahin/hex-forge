@@ -162,3 +162,82 @@ def set_active(
         "_encounter_list.html",
         {"encounters": _encounters(db, campaign.id), "active_id": encounter_id},
     )
+
+
+def _next_sort_order(db: Session, encounter_id: int) -> int:
+    rows = _combatants(db, encounter_id)
+    return (max((c.sort_order for c in rows), default=0) + 1) if rows else 0
+
+
+def _int_or(value: str, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def _int_or_none(value: str) -> int | None:
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
+
+
+@router.post("/{encounter_id}/combatant", response_class=HTMLResponse)
+async def add_combatant(
+    request: Request,
+    encounter_id: int,
+    name: str = Form(...),
+    initiative: str = Form("0"),
+    hp_max: str = Form("0"),
+    hp_current: str = Form(""),
+    ac: str = Form(""),
+    is_pc: str = Form(""),
+    npc_id: str = Form(""),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    enc = _owned_encounter(db, encounter_id, campaign.id)
+    if enc is not None and name.strip():
+        hp_m = _int_or(hp_max, 0)
+        hp_c = _int_or(hp_current, hp_m) if hp_current.strip() else hp_m
+        db.add(
+            Combatant(
+                encounter_id=enc.id,
+                name=name.strip(),
+                initiative=_int_or(initiative, 0),
+                hp_max=hp_m,
+                hp_current=max(0, min(hp_c, hp_m)) if hp_m else max(0, hp_c),
+                ac=_int_or_none(ac),
+                is_pc=bool(is_pc),
+                npc_id=_int_or_none(npc_id),
+                sort_order=_next_sort_order(db, enc.id),
+            )
+        )
+        db.commit()
+        await _notify(enc.id)
+    return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(db, enc))
+
+
+@router.post("/combatant/{combatant_id}/delete", response_class=HTMLResponse)
+async def delete_combatant(
+    request: Request,
+    combatant_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    c = _owned_combatant(db, combatant_id, campaign.id)
+    if c is None:
+        return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(db, None))
+    enc = db.get(Encounter, c.encounter_id)
+    if enc.active_combatant_id == c.id:
+        ordered = [x.id for x in _combatants(db, enc.id)]
+        if len(ordered) <= 1:
+            enc.active_combatant_id = None
+        else:
+            i = ordered.index(c.id)
+            enc.active_combatant_id = ordered[(i + 1) % len(ordered)]
+    db.delete(c)
+    db.commit()
+    await _notify(enc.id)
+    return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(db, enc))

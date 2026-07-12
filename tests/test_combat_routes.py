@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from app.core.database import SessionLocal
 from app.core.models import Campaign
 from app.core.server import create_app
-from app.modules.combat.models import Encounter
+from app.modules.combat.models import Combatant, Encounter
 
 client = TestClient(create_app())
 
@@ -88,6 +88,48 @@ def test_encounter_in_other_campaign_is_refused():
     try:
         db.delete(db.get(Campaign, other_id))
         db.commit()
+    finally:
+        db.close()
+    client.post(f"/combat/{eid}/delete")
+
+
+def test_add_combatant_appends_row():
+    client.post("/combat", data={"name": "Plan-Test Fight"})
+    eid = _enc_id("Plan-Test Fight")
+    resp = client.post(
+        f"/combat/{eid}/combatant",
+        data={"name": "Goblin", "initiative": "12", "hp_max": "7", "hp_current": "7", "ac": "13"},
+    )
+    assert resp.status_code == 200 and "Goblin" in resp.text
+    db = SessionLocal()
+    try:
+        rows = db.query(Combatant).filter_by(encounter_id=eid).all()
+        assert len(rows) == 1 and rows[0].hp_max == 7 and rows[0].ac == 13
+    finally:
+        db.close()
+    client.post(f"/combat/{eid}/delete")
+
+
+def test_remove_combatant_deletes_and_advances_active():
+    client.post("/combat", data={"name": "Plan-Test Remove"})
+    eid = _enc_id("Plan-Test Remove")
+    client.post(f"/combat/{eid}/combatant", data={"name": "A", "initiative": "20"})
+    client.post(f"/combat/{eid}/combatant", data={"name": "B", "initiative": "10"})
+    db = SessionLocal()
+    try:
+        a = db.query(Combatant).filter_by(encounter_id=eid, name="A").first()
+        b = db.query(Combatant).filter_by(encounter_id=eid, name="B").first()
+        enc = db.get(Encounter, eid)
+        enc.active_combatant_id = a.id  # A is active
+        db.commit()
+        a_id, b_id = a.id, b.id
+    finally:
+        db.close()
+    client.post(f"/combat/combatant/{a_id}/delete")
+    db = SessionLocal()
+    try:
+        assert db.get(Combatant, a_id) is None
+        assert db.get(Encounter, eid).active_combatant_id == b_id  # advanced to B
     finally:
         db.close()
     client.post(f"/combat/{eid}/delete")

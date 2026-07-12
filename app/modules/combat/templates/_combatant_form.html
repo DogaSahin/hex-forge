@@ -1,1 +1,9 @@
-<div class="combatant-form muted">Add-combatant form (built in the next tasks).</div>
+<form class="combatant-form" hx-post="/combat/{{ encounter.id }}/combatant"
+      hx-target="#tracker" hx-swap="outerHTML">
+  <input class="input" type="text" name="name" placeholder="Name" required>
+  <input class="input init-input" type="number" name="initiative" value="0" title="Initiative">
+  <input class="input hp-input" type="number" name="hp_max" value="0" title="Max HP">
+  <input class="input ac-input" type="number" name="ac" placeholder="AC" title="AC">
+  <label class="pc-check"><input type="checkbox" name="is_pc" value="1"> PC</label>
+  <button class="btn btn-primary" type="submit">Add</button>
+</form>
