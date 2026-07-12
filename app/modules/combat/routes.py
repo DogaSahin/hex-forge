@@ -13,6 +13,7 @@ from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
 from app.core.websocket import manager
 from app.modules.combat.models import CONDITIONS, Combatant, Encounter
+from app.modules.combat.projection import hp_band
 from app.modules.combat.statblock import parse_stats
 
 MODULE_DIR = Path(__file__).resolve().parent
@@ -82,6 +83,7 @@ def _tracker_ctx(request: Request, db: Session, encounter: Encounter | None) -> 
     rows = _combatants(db, encounter.id)
     for c in rows:
         c.cond_list = _conditions(c)  # transient attr for the template; not persisted
+        c.band = hp_band(c.hp_current, c.hp_max)  # shared band (single source of truth)
     return {
         "encounter": encounter,
         "rows": rows,
