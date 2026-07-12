@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, Request  # noqa: F401
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
@@ -94,3 +94,71 @@ def index(
 def encounter_jump(db: Session, campaign_id: int) -> list[dict]:
     rows = _encounters(db, campaign_id)
     return [{"label": e.name, "url": f"/combat/{e.id}", "kind": "encounter"} for e in rows]
+
+
+@router.post("", response_class=HTMLResponse)
+def create_encounter(
+    request: Request,
+    name: str = Form(...),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    if name.strip():
+        db.add(Encounter(campaign_id=campaign.id, name=name.strip()))
+        db.commit()
+    return templates.TemplateResponse(
+        request,
+        "_encounter_list.html",
+        {"encounters": _encounters(db, campaign.id), "active_id": None},
+    )
+
+
+@router.get("/{encounter_id}", response_class=HTMLResponse)
+def tracker(
+    request: Request,
+    encounter_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    enc = _owned_encounter(db, encounter_id, campaign.id)
+    return templates.TemplateResponse(request, "_tracker.html", _tracker_ctx(db, enc))
+
+
+@router.post("/{encounter_id}/delete", response_class=HTMLResponse)
+def delete_encounter(
+    request: Request,
+    encounter_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    enc = _owned_encounter(db, encounter_id, campaign.id)
+    if enc is not None:
+        db.query(Combatant).filter_by(encounter_id=enc.id).delete(synchronize_session=False)
+        db.delete(enc)
+        db.commit()
+    return templates.TemplateResponse(
+        request,
+        "_encounter_list.html",
+        {"encounters": _encounters(db, campaign.id), "active_id": None},
+    )
+
+
+@router.post("/{encounter_id}/set-active", response_class=HTMLResponse)
+def set_active(
+    request: Request,
+    encounter_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    enc = _owned_encounter(db, encounter_id, campaign.id)
+    if enc is not None:
+        db.query(Encounter).filter_by(campaign_id=campaign.id).update(
+            {Encounter.is_active: False}, synchronize_session=False
+        )
+        enc.is_active = True
+        db.commit()
+    return templates.TemplateResponse(
+        request,
+        "_encounter_list.html",
+        {"encounters": _encounters(db, campaign.id), "active_id": encounter_id},
+    )
