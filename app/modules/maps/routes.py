@@ -278,6 +278,43 @@ async def add_fog(
     return {"ok": True}
 
 
+@router.post("/{map_id}/fog/reveal-all")
+async def fog_reveal_all(
+    map_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> dict:
+    m = _owned_map(db, map_id, campaign.id)
+    if m is None:
+        return {"ok": False}
+    db.add(
+        FogRegion(
+            map_id=m.id,
+            seq=_next_fog_seq(db, m.id),
+            op="reveal",
+            geom_json=json.dumps({"type": "all"}),
+        )
+    )
+    db.commit()
+    await _publish_map_changed(m.id)
+    return {"ok": True}
+
+
+@router.post("/{map_id}/fog/hide-all")
+async def fog_hide_all(
+    map_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> dict:
+    m = _owned_map(db, map_id, campaign.id)
+    if m is None:
+        return {"ok": False}
+    db.query(FogRegion).filter_by(map_id=m.id).delete(synchronize_session=False)
+    db.commit()
+    await _publish_map_changed(m.id)
+    return {"ok": True}
+
+
 def _map_dict(m: Map) -> dict:
     return {
         "id": m.id,

@@ -12,6 +12,8 @@
       <button :class="{active: tool==='reveal-brush'}" @click="tool='reveal-brush'">Reveal ✎</button>
       <button :class="{active: tool==='hide'}" @click="tool='hide'">Hide</button>
       <label><input type="checkbox" x-model="snap"> Snap</label>
+      <button type="button" @click="fetch('/map/{{ map.id }}/fog/reveal-all',{method:'POST'}).then(()=>document.getElementById('map-stage').dispatchEvent(new CustomEvent('map:refresh')))">Reveal all</button>
+      <button type="button" @click="fetch('/map/{{ map.id }}/fog/hide-all',{method:'POST'}).then(()=>document.getElementById('map-stage').dispatchEvent(new CustomEvent('map:refresh')))">Hide all</button>
     </div>
     <form hx-post="/map/{{ map.id }}/image" hx-encoding="multipart/form-data"
           hx-target="#map-editor" hx-swap="innerHTML">
