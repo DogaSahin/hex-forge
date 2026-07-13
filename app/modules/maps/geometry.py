@@ -18,3 +18,10 @@ def snap_to_grid(x: int, y: int, size: int, off_x: int, off_y: int) -> tuple[int
     sx = math.floor((x - off_x) / size + 0.5) * size + off_x
     sy = math.floor((y - off_y) / size + 0.5) * size + off_y
     return int(sx), int(sy)
+
+
+def clamp_hp(current: int, maximum: int | None) -> int:
+    """Clamp HP into [0, maximum]. No max (None or <=0) => floor at 0 only."""
+    if maximum is None or maximum <= 0:
+        return max(0, current)
+    return max(0, min(current, maximum))

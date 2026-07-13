@@ -1,0 +1,20 @@
+{# app/modules/maps/templates/_token_menu.html #}
+{% if t is not none %}
+<form class="token-menu" hx-post="/token/{{ t.id }}" hx-target="#map-editor" hx-swap="innerHTML">
+  <label>Name <input name="name" value="{{ t.name }}"></label>
+  <label>Size <input type="number" name="size" value="{{ t.size }}" min="1"></label>
+  <label>Colour <input type="color" name="color" value="{{ t.color or '#888888' }}"></label>
+  <label>Layer
+    <select name="layer">
+      <option value="tokens" {% if t.layer=='tokens' %}selected{% endif %}>Tokens</option>
+      <option value="dm" {% if t.layer=='dm' %}selected{% endif %}>DM (secret)</option>
+    </select>
+  </label>
+  <label><input type="checkbox" name="visible_to_players" {% if t.visible_to_players %}checked{% endif %}> Visible to players</label>
+  <label>HP <input type="number" name="hp_current" value="{{ t.hp_current if t.hp_current is not none else '' }}"></label>
+  <label>/ <input type="number" name="hp_max" value="{{ t.hp_max if t.hp_max is not none else '' }}"></label>
+  <label><input type="checkbox" name="hp_visible_to_players" {% if t.hp_visible_to_players %}checked{% endif %}> Show HP to players</label>
+  <button type="submit" class="btn">Save</button>
+  <button type="submit" class="btn btn-ghost" hx-post="/token/{{ t.id }}/delete">Remove</button>
+</form>
+{% endif %}

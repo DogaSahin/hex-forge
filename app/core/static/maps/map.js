@@ -46,6 +46,14 @@ export function mountEditor(host) {
       const body = new URLSearchParams({ x: Math.round(x), y: Math.round(y), snap: host.dataset.snap === "true" ? "1" : "" });
       await fetch(`/token/${tid}/move`, { method: "POST", body });
     });
+
+    tokensLayer.inst.konvaLayer.on("dblclick dbltap", (e) => {
+      const group = e.target.getAttr("tokenId") ? e.target : e.target.findAncestor("Group");
+      const tid = group && group.getAttr("tokenId");
+      if (tid && window.htmx) {
+        htmx.ajax("GET", `/token/${tid}/menu`, { target: "#token-menu-host", swap: "innerHTML" });
+      }
+    });
   }
 
   // WS wiring is added in Slice 6; expose the layer table for those tasks.

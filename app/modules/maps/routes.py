@@ -11,7 +11,7 @@ from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
 from app.core.websocket import manager
-from app.modules.maps.geometry import snap_to_grid
+from app.modules.maps.geometry import clamp_hp, snap_to_grid
 from app.modules.maps.models import DIAGONAL_RULES, Map, Token
 from app.modules.maps.uploads import store_map_image, store_token_image
 
@@ -194,6 +194,13 @@ def _int_or(value: str, default: int) -> int:
         return default
 
 
+def _int_or_none(value: str) -> int | None:
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
+
+
 @router.post("/{map_id}/settings", response_class=HTMLResponse)
 def update_settings(
     request: Request,
@@ -258,6 +265,13 @@ def _map_dict(m: Map) -> dict:
     }
 
 
+async def _publish_map_changed(map_id: int) -> None:
+    """Coarse "something changed, refetch" signal. Contentless by design so it never
+    risks leaking DM-only fields; consumers refetch via the existing /state endpoints,
+    which already apply the two-surface split. Full topic gating lands in Task 29."""
+    await manager.publish(f"map:{map_id}", {"action": "map_changed", "map_id": map_id})
+
+
 async def _publish_token_move(t: Token) -> None:
     """Publish a positional delta. Topic gating (player-safe vs dm) lands in Task 28;
     for now publish on the player-safe topic."""
@@ -306,3 +320,71 @@ def upload_token_image(
             db.commit()
     m = db.get(Map, t.map_id) if t is not None else None
     return _editor_response(request, db, m)
+
+
+@token_router.post("/{token_id}", response_class=HTMLResponse)
+async def edit_token(
+    request: Request,
+    token_id: int,
+    name: str = Form(None),
+    size: str = Form(None),
+    color: str = Form(None),
+    layer: str = Form(None),
+    visible_to_players: str = Form(None),
+    hp_current: str = Form(None),
+    hp_max: str = Form(None),
+    hp_visible_to_players: str = Form(None),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    t = _owned_token(db, token_id, campaign.id)
+    m = db.get(Map, t.map_id) if t is not None else None
+    if t is not None:
+        if name is not None:
+            t.name = name.strip()
+        if size is not None:
+            t.size = max(1, _int_or(size, t.size))
+        if color is not None:
+            t.color = color
+        if layer is not None and layer in TOKEN_LAYERS:
+            t.layer = layer
+        if visible_to_players is not None:
+            t.visible_to_players = bool(visible_to_players)
+        # hp_max must be applied before hp_current so clamp_hp uses the new max.
+        if hp_max is not None:
+            t.hp_max = _int_or_none(hp_max)
+        if hp_current is not None:
+            t.hp_current = clamp_hp(_int_or(hp_current, 0), t.hp_max)
+        if hp_visible_to_players is not None:
+            t.hp_visible_to_players = bool(hp_visible_to_players)
+        db.commit()
+        await _publish_map_changed(t.map_id)
+    return _editor_response(request, db, m)
+
+
+@token_router.post("/{token_id}/delete", response_class=HTMLResponse)
+async def delete_token(
+    request: Request,
+    token_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    t = _owned_token(db, token_id, campaign.id)
+    m = db.get(Map, t.map_id) if t is not None else None
+    if t is not None:
+        map_id = t.map_id
+        db.delete(t)
+        db.commit()
+        await _publish_map_changed(map_id)
+    return _editor_response(request, db, m)
+
+
+@token_router.get("/{token_id}/menu", response_class=HTMLResponse)
+def token_menu(
+    request: Request,
+    token_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    t = _owned_token(db, token_id, campaign.id)
+    return templates.TemplateResponse(request, "_token_menu.html", {"t": t})
