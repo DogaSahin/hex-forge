@@ -8,9 +8,12 @@ from app.core.server import create_app
 
 
 def _map_with_token(client):
-    client.post("/map", data={"name": "MoveMap"})
+    name = "Token Move Map"
+    client.post("/map", data={"name": name})
     txt = client.get("/map", headers={"HX-Request": "true"}).text
-    mid = int(re.findall(r"/map/(\d+)/delete", txt)[-1])
+    m = re.search(rf'/map/(\d+)"[^>]*>{re.escape(name)}<', txt)
+    assert m is not None
+    mid = int(m.group(1))
     client.post(f"/map/{mid}/token", data={"name": "T"})
     tid = client.get(f"/map/{mid}/state").json()["tokens"][0]["id"]
     return mid, tid

@@ -8,9 +8,12 @@ from app.core.server import create_app
 
 
 def _make_map(client):
-    client.post("/map", data={"name": "Token Map"})
+    name = "Token Create Map"
+    client.post("/map", data={"name": name})
     txt = client.get("/map", headers={"HX-Request": "true"}).text
-    return int(re.findall(r"/map/(\d+)/delete", txt)[-1])
+    m = re.search(rf'/map/(\d+)"[^>]*>{re.escape(name)}<', txt)
+    assert m is not None
+    return int(m.group(1))
 
 
 def test_create_disc_token_appears_in_state():
