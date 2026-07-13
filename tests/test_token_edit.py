@@ -50,38 +50,74 @@ def test_edit_and_delete_token():
     assert client.get(f"/map/{mid}/state").json()["tokens"] == []
 
 
-def test_token_menu_has_hidden_inputs():
-    """Menu must render hidden inputs before checkboxes for unchecked state."""
+def test_token_menu_flags_have_single_unambiguous_name():
+    """Each visibility flag must render exactly ONE element with its name.
+
+    The Alpine-bound hidden input is the sole carrier of the form key; the
+    checkbox must have no `name` so it cannot submit a competing value.
+    Duplicating the same `name` on both a hidden input and a checkbox is
+    ambiguous (Starlette resolves duplicate keys to the FIRST value, not the
+    last), which made it impossible to turn the flag ON. This must fail
+    against the old duplicate-name template.
+    """
     client = TestClient(create_app())
     mid, tid = _token(client)
     resp = client.get(f"/token/{tid}/menu")
-    assert 'type="hidden" name="visible_to_players"' in resp.text
-    assert 'type="hidden" name="hp_visible_to_players"' in resp.text
+    assert resp.text.count('name="visible_to_players"') == 1
+    assert resp.text.count('name="hp_visible_to_players"') == 1
 
 
-def test_toggle_visibility_flags_off():
-    """Regression: turning OFF a checkbox should persist (not silently no-op)."""
+def test_toggle_visibility_flags_on():
+    """Turning a flag ON: single visible_to_players="true" key must persist True.
+
+    This is the path the duplicate-name template broke: Starlette resolves a
+    duplicated form key to the FIRST value, so a hidden "" input placed before
+    the checked checkbox's "true" input silently won.
+    """
     client = TestClient(create_app())
     mid, tid = _token(client)
 
-    # Turn on visible_to_players.
-    client.post(f"/token/{tid}", data={"visible_to_players": "true"})
-    t = client.get(f"/map/{mid}/state").json()["tokens"][0]
-    assert t["visible_to_players"] is True
-
-    # Uncheck (browser sends hidden field only, since checkbox is unchecked).
-    client.post(f"/token/{tid}", data={"visible_to_players": ""})
+    # Force a known False starting state (visible_to_players defaults True at
+    # the model level, so establish the starting point explicitly rather than
+    # assume it).
+    client.post(
+        f"/token/{tid}",
+        data={"visible_to_players": "", "hp_visible_to_players": ""},
+    )
     t = client.get(f"/map/{mid}/state").json()["tokens"][0]
     assert t["visible_to_players"] is False
+    assert t["hp_visible_to_players"] is False
 
-    # Turn on hp_visible_to_players.
-    client.post(f"/token/{tid}", data={"hp_visible_to_players": "true"})
+    client.post(
+        f"/token/{tid}",
+        data={"visible_to_players": "true", "hp_visible_to_players": "true"},
+    )
     t = client.get(f"/map/{mid}/state").json()["tokens"][0]
+    assert t["visible_to_players"] is True
     assert t["hp_visible_to_players"] is True
 
-    # Uncheck (browser sends hidden field only, since checkbox is unchecked).
-    client.post(f"/token/{tid}", data={"hp_visible_to_players": ""})
+
+def test_toggle_visibility_flags_off():
+    """Turning a flag OFF: single visible_to_players="" key must persist False."""
+    client = TestClient(create_app())
+    mid, tid = _token(client)
+
+    # Turn both flags on first.
+    client.post(
+        f"/token/{tid}",
+        data={"visible_to_players": "true", "hp_visible_to_players": "true"},
+    )
     t = client.get(f"/map/{mid}/state").json()["tokens"][0]
+    assert t["visible_to_players"] is True
+    assert t["hp_visible_to_players"] is True
+
+    # Uncheck (Alpine sends the hidden field valued "" when unchecked).
+    client.post(
+        f"/token/{tid}",
+        data={"visible_to_players": "", "hp_visible_to_players": ""},
+    )
+    t = client.get(f"/map/{mid}/state").json()["tokens"][0]
+    assert t["visible_to_players"] is False
     assert t["hp_visible_to_players"] is False
 
 
