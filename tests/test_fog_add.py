@@ -35,3 +35,27 @@ def test_malformed_geom_rejected_without_500():
     assert r.json() == {"ok": False}
     fog = client.get(f"/map/{mid}/state").json()["fog"]
     assert fog == []
+
+
+def test_non_object_geom_number_rejected_without_500():
+    """geom that parses as valid JSON but isn't an object (e.g. a bare number) must be
+    rejected up front — otherwise reduce_ops's geom.get("type") 500s on every later /state."""
+    client = TestClient(create_app())
+    mid = _make_map(client, "FogMapNumberGeom")
+    r = client.post(f"/map/{mid}/fog", data={"op": "reveal", "geom": "5"})
+    assert r.status_code == 200
+    assert r.json() == {"ok": False}
+    state = client.get(f"/map/{mid}/state")
+    assert state.status_code == 200
+    assert state.json()["fog"] == []
+
+
+def test_non_object_geom_array_rejected_without_500():
+    client = TestClient(create_app())
+    mid = _make_map(client, "FogMapArrayGeom")
+    r = client.post(f"/map/{mid}/fog", data={"op": "reveal", "geom": "[1, 2]"})
+    assert r.status_code == 200
+    assert r.json() == {"ok": False}
+    state = client.get(f"/map/{mid}/state")
+    assert state.status_code == 200
+    assert state.json()["fog"] == []

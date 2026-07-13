@@ -11,6 +11,10 @@ def reduce_ops(ops: list[dict]) -> list[dict]:
     result: list[dict] = []
     for entry in ops:
         geom = entry.get("geom", {})
+        if not isinstance(geom, dict):
+            # Defence in depth: a malformed row already persisted (e.g. from before
+            # add_fog validated shape) must be skipped, never crash the whole map.
+            continue
         if geom.get("type") == "all":
             if entry["op"] == "reveal":
                 result = [{"op": "reveal", "geom": {"type": "all"}}]

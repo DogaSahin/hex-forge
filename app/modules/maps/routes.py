@@ -272,6 +272,8 @@ async def add_fog(
         parsed = json.loads(geom)
     except ValueError:
         return {"ok": False}
+    if not isinstance(parsed, dict):
+        return {"ok": False}
     db.add(FogRegion(map_id=m.id, seq=_next_fog_seq(db, m.id), op=op, geom_json=json.dumps(parsed)))
     db.commit()
     await _publish_map_changed(m.id)

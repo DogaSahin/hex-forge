@@ -43,6 +43,16 @@ def test_reveal_after_hide_all_still_applies():
     assert reduce_ops(ops) == [{"op": "reveal", "geom": _rect(140, 140, 70, 70)}]
 
 
+def test_malformed_non_dict_geom_entry_is_skipped():
+    """A bad row already in the DB (non-dict geom) must be skipped, not crash the reducer —
+    later, well-formed ops still apply."""
+    ops = [
+        {"op": "reveal", "geom": 5},
+        {"op": "reveal", "geom": _rect(0, 0, 70, 70)},
+    ]
+    assert reduce_ops(ops) == [{"op": "reveal", "geom": _rect(0, 0, 70, 70)}]
+
+
 def test_hide_after_reveal_all_still_applies():
     """DM reveals the whole map, then re-hides one room — the hide must survive."""
     ops = [
