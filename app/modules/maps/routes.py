@@ -252,7 +252,7 @@ def map_player_state(
     if m is None:
         return {"map": None, "tokens": [], "fog": []}
     tokens = db.query(Token).filter_by(map_id=m.id).order_by(Token.id).all()
-    return player_state(_map_dict(m), tokens, _fog_ops(db, m.id))
+    return player_state(m, tokens, _fog_ops(db, m.id))
 
 
 def _tokens_dm(db: Session, map_id: int) -> list[dict]:

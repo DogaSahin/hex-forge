@@ -5,8 +5,8 @@ import re
 from fastapi.testclient import TestClient
 
 from app.core.server import create_app
-from app.modules.maps.models import Token
-from app.modules.maps.projection import project_tokens
+from app.modules.maps.models import Map, Token
+from app.modules.maps.projection import project_map, project_tokens
 
 
 def _tok(**kw):
@@ -87,6 +87,52 @@ def test_hp_hidden_when_flag_off():
     assert "hp_max" not in out[0]
 
 
+def test_hp_band_omitted_when_hp_max_zero_or_none():
+    tokens = [
+        _tok(id=1, name="ZeroMax", hp_current=0, hp_max=0, hp_visible_to_players=True),
+        _tok(id=2, name="NoneMax", hp_current=None, hp_max=None, hp_visible_to_players=True),
+    ]
+    out = project_tokens(tokens)
+    assert len(out) == 2
+    for d in out:
+        assert "hp_band" not in d
+        assert "hp_current" not in d
+        assert "hp_max" not in d
+
+
+def test_project_map_exact_keys_and_excludes_is_active():
+    m = Map(
+        id=3,
+        campaign_id=1,
+        name="Dungeon",
+        image_path="maps/dungeon.png",
+        image_w=1200,
+        image_h=800,
+        grid_size_px=70,
+        grid_offset_x=5,
+        grid_offset_y=10,
+        grid_visible=True,
+        feet_per_square=5,
+        diagonal_rule="chebyshev",
+        is_active=True,
+    )
+    d = project_map(m)
+    assert d == {
+        "id": 3,
+        "name": "Dungeon",
+        "image_path": "maps/dungeon.png",
+        "image_w": 1200,
+        "image_h": 800,
+        "grid_size_px": 70,
+        "grid_offset_x": 5,
+        "grid_offset_y": 10,
+        "grid_visible": True,
+        "feet_per_square": 5,
+        "diagonal_rule": "chebyshev",
+    }
+    assert "is_active" not in d
+
+
 def _make_map(client, name):
     client.post("/map", data={"name": name})
     txt = client.get("/map", headers={"HX-Request": "true"}).text
@@ -104,6 +150,25 @@ def test_player_state_endpoint_filters():
     names = {t["name"] for t in ps["tokens"]}
     assert "Secret" not in names
     assert "Seen" in names
+
+
+def test_player_state_map_has_exact_allow_listed_keys():
+    client = TestClient(create_app())
+    mid = _make_map(client, "Player State Map Keys")
+    ps = client.get(f"/map/{mid}/player-state").json()
+    assert set(ps["map"].keys()) == {
+        "id",
+        "name",
+        "image_path",
+        "image_w",
+        "image_h",
+        "grid_size_px",
+        "grid_offset_x",
+        "grid_offset_y",
+        "grid_visible",
+        "feet_per_square",
+        "diagonal_rule",
+    }
 
 
 def test_player_state_missing_map_is_placeholder():

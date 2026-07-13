@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.core.projection import hp_band
-from app.modules.maps.models import Token
+from app.modules.maps.models import Map, Token
 
 
 def project_tokens(tokens: list[Token]) -> list[dict]:
@@ -27,5 +27,23 @@ def project_tokens(tokens: list[Token]) -> list[dict]:
     return out
 
 
-def player_state(map_dict: dict, tokens: list[Token], fog: list[dict]) -> dict:
-    return {"map": map_dict, "tokens": project_tokens(tokens), "fog": fog}
+def project_map(m: Map) -> dict:
+    """Player-safe map fields. Explicit allow-list: a new Map column must be
+    added here deliberately to ever reach the player surface."""
+    return {
+        "id": m.id,
+        "name": m.name,
+        "image_path": m.image_path,
+        "image_w": m.image_w,
+        "image_h": m.image_h,
+        "grid_size_px": m.grid_size_px,
+        "grid_offset_x": m.grid_offset_x,
+        "grid_offset_y": m.grid_offset_y,
+        "grid_visible": m.grid_visible,
+        "feet_per_square": m.feet_per_square,
+        "diagonal_rule": m.diagonal_rule,
+    }
+
+
+def player_state(m: Map, tokens: list[Token], fog: list[dict]) -> dict:
+    return {"map": project_map(m), "tokens": project_tokens(tokens), "fog": fog}
