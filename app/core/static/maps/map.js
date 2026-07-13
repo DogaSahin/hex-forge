@@ -89,6 +89,15 @@ export function mountEditor(host) {
         measuring = false;
       }
     });
+
+    // Reset the ruler when the DM switches away from the measure tool.
+    const toolObserver = new MutationObserver(() => {
+      if (host.dataset.tool !== "measure" && measuring) {
+        rulerLayer.inst.end();
+        measuring = false;
+      }
+    });
+    toolObserver.observe(host, { attributes: true, attributeFilter: ["data-tool"] });
   }
 
   // WS wiring is added in Slice 6; expose the layer table for those tasks.
