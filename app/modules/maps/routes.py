@@ -356,10 +356,20 @@ async def _publish_map_changed(map_id: int) -> None:
 
 
 async def _publish_token_move(t: Token) -> None:
-    """Publish a positional delta. Topic gating (player-safe vs dm) lands in Task 28;
-    for now publish on the player-safe topic."""
+    """Publish a positional delta on the correct topic for this token's visibility.
+
+    A visible, tokens-layer token is safe for the player surface, so its moves go on the
+    player-safe `map:{id}` topic (DM windows also receive it — they subscribe to both). A
+    hidden token or a dm-layer token's coordinates must never reach a player-subscribed
+    socket, so those moves go only on the dm-only `map:{id}:dm` topic. This mirrors the
+    predicate used by the player projection (`app.modules.maps.projection.player_state`).
+    A visibility toggle itself is published as a coarse `map_changed` (full refetch), so
+    un-hiding a token can never ride a stale positional delta.
+    """
+    player_safe = t.visible_to_players and t.layer == "tokens"
+    topic = f"map:{t.map_id}" if player_safe else f"map:{t.map_id}:dm"
     await manager.publish(
-        f"map:{t.map_id}",
+        topic,
         {"action": "token.move", "map_id": t.map_id, "token_id": t.id, "x": t.x, "y": t.y},
     )
 
