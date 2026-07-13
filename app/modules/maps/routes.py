@@ -115,7 +115,7 @@ def create_map(
 
 
 @router.post("/{map_id}/delete", response_class=HTMLResponse)
-def delete_map(
+async def delete_map(
     request: Request,
     map_id: int,
     db: Session = Depends(get_db),
@@ -128,6 +128,12 @@ def delete_map(
         _delete_map_children(db, m.id)
         db.delete(m)
         db.commit()
+        # Map.id is a bare rowid PK (reused after delete), so a dangling broadcast
+        # pointer left after deleting the live map could later resolve to an
+        # unrelated, un-pushed map. Clear it and notify the player surface.
+        if broadcast.get_state(db, campaign.id).active_map_id == map_id:
+            broadcast.set_active_map(db, campaign.id, None)
+            await broadcast.publish_changed(campaign.id)
     return templates.TemplateResponse(
         request, "_map_list.html", {"maps": _maps(db, campaign.id), "active_id": None}
     )

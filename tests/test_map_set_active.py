@@ -89,3 +89,21 @@ def test_set_active_refused_for_map_in_other_campaign():
         db.close()
 
     client.post(f"/map/{mid}/delete")
+
+
+def test_delete_active_map_clears_broadcast_pointer_and_publishes():
+    client.post("/map", data={"name": "Plan-Test Active Delete Live"})
+    mid = _map_id("Plan-Test Active Delete Live")
+    assert mid is not None
+
+    client.post(f"/map/{mid}/set-active")
+    assert client.get("/player/state").json()["active_map_id"] == mid
+
+    with client.websocket_connect("/ws?topic=broadcast") as ws:
+        client.post(f"/map/{mid}/delete")
+        msg = ws.receive_json()
+        assert msg["action"] == "broadcast_changed"
+
+    # The pointer must be cleared, not left dangling (ids are reused, so a stale
+    # pointer could later resolve to an unrelated, un-pushed map).
+    assert client.get("/player/state").json()["active_map_id"] is None
