@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
+from app.core import broadcast
 from app.core.campaigns import get_active_campaign
 from app.core.database import get_db
 from app.core.models import Campaign
@@ -129,6 +130,27 @@ def delete_map(
         db.commit()
     return templates.TemplateResponse(
         request, "_map_list.html", {"maps": _maps(db, campaign.id), "active_id": None}
+    )
+
+
+@router.post("/{map_id}/set-active", response_class=HTMLResponse)
+async def set_active(
+    request: Request,
+    map_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    m = _owned_map(db, map_id, campaign.id)
+    if m is not None:
+        db.query(Map).filter_by(campaign_id=campaign.id).update(
+            {Map.is_active: False}, synchronize_session=False
+        )
+        m.is_active = True
+        db.commit()
+        broadcast.set_active_map(db, campaign.id, m.id)
+        await broadcast.publish_changed(campaign.id)
+    return templates.TemplateResponse(
+        request, "_map_list.html", {"maps": _maps(db, campaign.id), "active_id": map_id}
     )
 
 
