@@ -21,9 +21,10 @@
   }
 
   function subscribe(topic) {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ topic, action: "subscribe", payload: {} }));
-    }
+    const frame = JSON.stringify({ topic, action: "subscribe", payload: {} });
+    if (!socket) return;
+    if (socket.readyState === WebSocket.OPEN) socket.send(frame);
+    else socket.addEventListener("open", () => socket.send(frame), { once: true });
   }
 
   function on(action, handler) {
