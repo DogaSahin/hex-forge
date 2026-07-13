@@ -160,6 +160,24 @@ async def set_active(
     )
 
 
+@router.post("/stop-sharing", response_class=HTMLResponse)
+async def stop_sharing(
+    request: Request,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    """Let the DM stop pushing any map to the players, without picking a new one."""
+    db.query(Map).filter_by(campaign_id=campaign.id).update(
+        {Map.is_active: False}, synchronize_session=False
+    )
+    db.commit()
+    broadcast.set_active_map(db, campaign.id, None)
+    await broadcast.publish_changed(campaign.id)
+    return templates.TemplateResponse(
+        request, "_map_list.html", {"maps": _maps(db, campaign.id), "active_id": None}
+    )
+
+
 def _delete_map_children(db: Session, map_id: int) -> None:
     """Remove tokens + fog for a map. No-ops cleanly until those tables exist."""
     try:

@@ -39,7 +39,8 @@
   <div id="player-map" style="display:none"></div>
   <script>
   document.addEventListener("DOMContentLoaded", function () {
-    var activeEnc = null;
+    var activeEnc; // undefined so the first refresh always runs loadMirror(), even
+                   // when there is no active encounter (clears the "Connecting…" banner)
     var activeMap = null;
     function loadMirror(encId) {
       var stage = document.getElementById("stage");
@@ -61,7 +62,9 @@
       // Player-only, always: no data-dm-topic is ever set here, so map.js can never
       // reach the dm-only topic from this surface (the two-surface boundary).
       host.dataset.mode = "player";
-      if (window.HexWS) { HexWS.subscribe("map:" + mapId); }
+      // No subscribe call here: mountEditor (below) calls HexWS.connect("map:"+mapId),
+      // which already opens/subscribes that topic on the single shared socket. An extra
+      // subscribe would land on whatever socket predates it and double-deliver frames.
       import("/static/maps/map.js").then(function (mod) {
         mod.mountEditor(host);
       });

@@ -107,3 +107,25 @@ def test_delete_active_map_clears_broadcast_pointer_and_publishes():
     # The pointer must be cleared, not left dangling (ids are reused, so a stale
     # pointer could later resolve to an unrelated, un-pushed map).
     assert client.get("/player/state").json()["active_map_id"] is None
+
+
+def test_stop_sharing_clears_active_map_and_publishes_contentless():
+    client.post("/map", data={"name": "Plan-Test Active Stop Sharing"})
+    mid = _map_id("Plan-Test Active Stop Sharing")
+    assert mid is not None
+
+    client.post(f"/map/{mid}/set-active")
+    assert client.get("/player/state").json()["active_map_id"] == mid
+
+    with client.websocket_connect("/ws?topic=broadcast") as ws:
+        client.post("/map/stop-sharing")
+        msg = ws.receive_json()
+        assert msg["action"] == "broadcast_changed"
+        # Contentless by design, same guarantee as set-active's publish.
+        assert set(msg.keys()) == {"action", "campaign_id"}
+
+    ps = client.get("/player/state").json()
+    assert ps["active_map_id"] is None
+    assert client.get(f"/map/{mid}/state").json()["map"]["is_active"] is False
+
+    client.post(f"/map/{mid}/delete")

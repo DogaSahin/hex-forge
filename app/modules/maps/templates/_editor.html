@@ -23,6 +23,9 @@
     <form hx-post="/map/{{ map.id }}/set-active" hx-target="#map-list" hx-swap="outerHTML">
       <button type="submit" class="btn btn-accent">Push to players</button>
     </form>
+    <form hx-post="/map/stop-sharing" hx-target="#map-list" hx-swap="outerHTML">
+      <button type="submit" class="btn btn-ghost">Stop sharing</button>
+    </form>
     <form hx-post="/map/{{ map.id }}/token" hx-target="#map-editor" hx-swap="innerHTML" class="token-add">
       <input type="text" name="name" placeholder="Token name">
       <input type="color" name="color" value="#c0392b">
