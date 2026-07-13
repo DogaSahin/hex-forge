@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.core.server import create_app
 from app.modules.maps.models import Map, Token
-from app.modules.maps.projection import project_map, project_tokens
+from app.modules.maps.projection import is_player_visible, project_map, project_tokens
 
 
 def _tok(**kw):
@@ -31,6 +31,13 @@ def _tok(**kw):
     t = Token(**{k: v for k, v in base.items() if k != "id"})
     t.id = base["id"]
     return t
+
+
+def test_is_player_visible_single_source_of_truth():
+    assert is_player_visible(_tok(visible_to_players=True, layer="tokens")) is True
+    assert is_player_visible(_tok(visible_to_players=False, layer="tokens")) is False
+    assert is_player_visible(_tok(visible_to_players=True, layer="dm")) is False
+    assert is_player_visible(_tok(visible_to_players=False, layer="dm")) is False
 
 
 def test_hidden_and_dm_tokens_excluded():

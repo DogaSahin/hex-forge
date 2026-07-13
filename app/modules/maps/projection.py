@@ -4,12 +4,19 @@ from app.core.projection import hp_band
 from app.modules.maps.models import Map, Token
 
 
+def is_player_visible(t: Token) -> bool:
+    """The single source of truth for 'may the player see this token?'.
+    Used by BOTH the player projection and the WS topic gate — if these ever
+    diverged, a hidden token's moves could be published on the player topic."""
+    return bool(t.visible_to_players) and t.layer == "tokens"
+
+
 def project_tokens(tokens: list[Token]) -> list[dict]:
     """Player-safe token projection. Drops hidden + dm-layer tokens; emits an HP
     band only when explicitly shared; NEVER an HP number."""
     out: list[dict] = []
     for t in tokens:
-        if not t.visible_to_players or t.layer != "tokens":
+        if not is_player_visible(t):
             continue
         d = {
             "id": t.id,

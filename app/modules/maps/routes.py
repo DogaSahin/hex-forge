@@ -15,7 +15,7 @@ from app.core.websocket import manager
 from app.modules.maps.fog import reduce_ops
 from app.modules.maps.geometry import clamp_hp, snap_to_grid
 from app.modules.maps.models import DIAGONAL_RULES, FogRegion, Map, Token
-from app.modules.maps.projection import player_state
+from app.modules.maps.projection import is_player_visible, player_state
 from app.modules.maps.uploads import store_map_image, store_token_image
 
 MODULE_DIR = Path(__file__).resolve().parent
@@ -351,7 +351,8 @@ def _map_dict(m: Map) -> dict:
 async def _publish_map_changed(map_id: int) -> None:
     """Coarse "something changed, refetch" signal. Contentless by design so it never
     risks leaking DM-only fields; consumers refetch via the existing /state endpoints,
-    which already apply the two-surface split. Full topic gating lands in Task 29."""
+    which already apply the two-surface split. Topic gating for positional deltas is
+    handled by `_publish_token_move` below via `is_player_visible`."""
     await manager.publish(f"map:{map_id}", {"action": "map_changed", "map_id": map_id})
 
 
@@ -361,12 +362,13 @@ async def _publish_token_move(t: Token) -> None:
     A visible, tokens-layer token is safe for the player surface, so its moves go on the
     player-safe `map:{id}` topic (DM windows also receive it — they subscribe to both). A
     hidden token or a dm-layer token's coordinates must never reach a player-subscribed
-    socket, so those moves go only on the dm-only `map:{id}:dm` topic. This mirrors the
-    predicate used by the player projection (`app.modules.maps.projection.player_state`).
+    socket, so those moves go only on the dm-only `map:{id}:dm` topic. This uses the exact
+    same predicate as the player projection (`is_player_visible`) — the two must never
+    diverge, so both call the shared helper rather than re-deriving the rule.
     A visibility toggle itself is published as a coarse `map_changed` (full refetch), so
     un-hiding a token can never ride a stale positional delta.
     """
-    player_safe = t.visible_to_players and t.layer == "tokens"
+    player_safe = is_player_visible(t)
     topic = f"map:{t.map_id}" if player_safe else f"map:{t.map_id}:dm"
     await manager.publish(
         topic,
