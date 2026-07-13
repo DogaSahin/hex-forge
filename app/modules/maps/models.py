@@ -68,3 +68,13 @@ class Token(Base):
         Boolean, nullable=False, default=True, server_default="1"
     )
     meta_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}", server_default="{}")
+
+
+class FogRegion(Base):
+    __tablename__ = "fog_region"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    map_id: Mapped[int] = mapped_column(Integer, ForeignKey("map.id"), index=True, nullable=False)
+    seq: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    op: Mapped[str] = mapped_column(String(10), nullable=False)
+    geom_json: Mapped[str] = mapped_column(Text, nullable=False)
