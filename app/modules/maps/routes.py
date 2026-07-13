@@ -252,6 +252,32 @@ def _fog_ops(db: Session, map_id: int) -> list[dict]:
     return reduce_ops(ops)
 
 
+def _next_fog_seq(db: Session, map_id: int) -> int:
+    rows = db.query(FogRegion).filter_by(map_id=map_id).all()
+    return max((r.seq for r in rows), default=-1) + 1
+
+
+@router.post("/{map_id}/fog")
+async def add_fog(
+    map_id: int,
+    op: str = Form("reveal"),
+    geom: str = Form("{}"),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> dict:
+    m = _owned_map(db, map_id, campaign.id)
+    if m is None or op not in ("reveal", "hide"):
+        return {"ok": False}
+    try:
+        parsed = json.loads(geom)
+    except ValueError:
+        return {"ok": False}
+    db.add(FogRegion(map_id=m.id, seq=_next_fog_seq(db, m.id), op=op, geom_json=json.dumps(parsed)))
+    db.commit()
+    await _publish_map_changed(m.id)
+    return {"ok": True}
+
+
 def _map_dict(m: Map) -> dict:
     return {
         "id": m.id,

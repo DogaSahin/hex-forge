@@ -7,15 +7,17 @@ from fastapi.testclient import TestClient
 from app.core.server import create_app
 
 
-def _make_map(client):
-    client.post("/map", data={"name": "Grid Map"})
+def _make_map(client, name):
+    client.post("/map", data={"name": name})
     txt = client.get("/map", headers={"HX-Request": "true"}).text
-    return int(re.findall(r"/map/(\d+)/delete", txt)[-1])
+    m = re.search(rf'/map/(\d+)"[^>]*>{re.escape(name)}<', txt)
+    assert m is not None
+    return int(m.group(1))
 
 
 def test_settings_persist():
     client = TestClient(create_app())
-    mid = _make_map(client)
+    mid = _make_map(client, "Grid Map Persist")
     client.post(
         f"/map/{mid}/settings",
         data={
@@ -37,7 +39,7 @@ def test_settings_persist():
 
 def test_invalid_rule_ignored():
     client = TestClient(create_app())
-    mid = _make_map(client)
+    mid = _make_map(client, "Grid Map Invalid Rule")
     client.post(
         f"/map/{mid}/settings",
         data={

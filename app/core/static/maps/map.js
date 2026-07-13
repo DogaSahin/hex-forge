@@ -100,6 +100,43 @@ export function mountEditor(host) {
     toolObserver.observe(host, { attributes: true, attributeFilter: ["data-tool"] });
   }
 
+  if (mode === "dm") {
+    // Rectangle reveal/hide
+    let fogStart = null;
+    stage.on("mousedown touchstart", () => {
+      const tool = host.dataset.tool;
+      if (tool !== "reveal-rect" && tool !== "hide") return;
+      const p = stage.getPointerPosition();
+      if (!p) return;
+      fogStart = [p.x, p.y];
+    });
+    stage.on("mouseup touchend", async () => {
+      const tool = host.dataset.tool;
+      if ((tool !== "reveal-rect" && tool !== "hide") || !fogStart) return;
+      const p = stage.getPointerPosition();
+      if (!p) {
+        fogStart = null;
+        return;
+      }
+      const x = Math.min(fogStart[0], p.x);
+      const y = Math.min(fogStart[1], p.y);
+      const w = Math.abs(p.x - fogStart[0]);
+      const h = Math.abs(p.y - fogStart[1]);
+      fogStart = null;
+      if (w < 3 || h < 3) return;
+      const op = tool === "hide" ? "hide" : "reveal";
+      const geom = JSON.stringify({
+        type: "rect",
+        x: Math.round(x),
+        y: Math.round(y),
+        w: Math.round(w),
+        h: Math.round(h),
+      });
+      await fetch(`/map/${mapId}/fog`, { method: "POST", body: new URLSearchParams({ op, geom }) });
+      refresh();
+    });
+  }
+
   // WS wiring is added in Slice 6; expose the layer table for those tasks.
   host._hexLayers = layers;
   host._hexRefresh = refresh;
