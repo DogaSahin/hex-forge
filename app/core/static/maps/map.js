@@ -48,10 +48,45 @@ export function mountEditor(host) {
     });
 
     tokensLayer.inst.konvaLayer.on("dblclick dbltap", (e) => {
+      if (host.dataset.tool === "measure") return; // ruler owns dblclick while measuring
       const group = e.target.getAttr("tokenId") ? e.target : e.target.findAncestor("Group");
       const tid = group && group.getAttr("tokenId");
       if (tid && window.htmx) {
         htmx.ajax("GET", `/token/${tid}/menu`, { target: "#token-menu-host", swap: "innerHTML" });
+      }
+    });
+  }
+
+  const rulerLayer = layers.find((l) => l.name === "ruler");
+  if (rulerLayer && mode === "dm") {
+    let measuring = false;
+    stage.on("mousedown touchstart", () => {
+      if (host.dataset.tool !== "measure") return;
+      const p = stage.getPointerPosition();
+      if (!p) return;
+      rulerLayer.inst.setMeta((host._lastState || {}).map || {});
+      if (!measuring) {
+        rulerLayer.inst.beginAt([p.x, p.y]);
+        measuring = true;
+      } else {
+        rulerLayer.inst.addWaypoint([p.x, p.y]);
+      }
+    });
+    stage.on("mousemove touchmove", () => {
+      if (!measuring || host.dataset.tool !== "measure") return;
+      const p = stage.getPointerPosition();
+      if (p) rulerLayer.inst.moveTo([p.x, p.y]);
+    });
+    stage.on("dblclick dbltap", () => {
+      if (host.dataset.tool === "measure" && measuring) {
+        rulerLayer.inst.end();
+        measuring = false;
+      }
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && measuring) {
+        rulerLayer.inst.end();
+        measuring = false;
       }
     });
   }
