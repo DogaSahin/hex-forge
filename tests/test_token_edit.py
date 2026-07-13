@@ -48,3 +48,55 @@ def test_edit_and_delete_token():
 
     client.post(f"/token/{tid}/delete")
     assert client.get(f"/map/{mid}/state").json()["tokens"] == []
+
+
+def test_token_menu_has_hidden_inputs():
+    """Menu must render hidden inputs before checkboxes for unchecked state."""
+    client = TestClient(create_app())
+    mid, tid = _token(client)
+    resp = client.get(f"/token/{tid}/menu")
+    assert 'type="hidden" name="visible_to_players"' in resp.text
+    assert 'type="hidden" name="hp_visible_to_players"' in resp.text
+
+
+def test_toggle_visibility_flags_off():
+    """Regression: turning OFF a checkbox should persist (not silently no-op)."""
+    client = TestClient(create_app())
+    mid, tid = _token(client)
+
+    # Turn on visible_to_players.
+    client.post(f"/token/{tid}", data={"visible_to_players": "true"})
+    t = client.get(f"/map/{mid}/state").json()["tokens"][0]
+    assert t["visible_to_players"] is True
+
+    # Uncheck (browser sends hidden field only, since checkbox is unchecked).
+    client.post(f"/token/{tid}", data={"visible_to_players": ""})
+    t = client.get(f"/map/{mid}/state").json()["tokens"][0]
+    assert t["visible_to_players"] is False
+
+    # Turn on hp_visible_to_players.
+    client.post(f"/token/{tid}", data={"hp_visible_to_players": "true"})
+    t = client.get(f"/map/{mid}/state").json()["tokens"][0]
+    assert t["hp_visible_to_players"] is True
+
+    # Uncheck (browser sends hidden field only, since checkbox is unchecked).
+    client.post(f"/token/{tid}", data={"hp_visible_to_players": ""})
+    t = client.get(f"/map/{mid}/state").json()["tokens"][0]
+    assert t["hp_visible_to_players"] is False
+
+
+def test_absent_checkbox_field_leaves_flag_untouched():
+    """Omitting the field should leave flag unchanged (absent = untouched)."""
+    client = TestClient(create_app())
+    mid, tid = _token(client)
+
+    # Set visible_to_players to True.
+    client.post(f"/token/{tid}", data={"visible_to_players": "true"})
+    t = client.get(f"/map/{mid}/state").json()["tokens"][0]
+    assert t["visible_to_players"] is True
+
+    # POST with NO visible_to_players key at all (absent).
+    client.post(f"/token/{tid}", data={"name": "unchanged"})
+    t = client.get(f"/map/{mid}/state").json()["tokens"][0]
+    # Flag should remain True (not touched).
+    assert t["visible_to_players"] is True
