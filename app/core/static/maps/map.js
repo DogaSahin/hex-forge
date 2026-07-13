@@ -181,7 +181,22 @@ export function mountEditor(host) {
     });
   }
 
-  // WS wiring is added in Slice 6; expose the layer table for those tasks.
+  // Live sync: player subscribes to the player-safe `map:{id}` topic only; the DM also
+  // subscribes to the dm-only `map:{id}:dm` topic so hidden/dm-layer token moves reach the
+  // DM window without ever touching a socket the player could be listening on.
+  if (window.HexWS) {
+    HexWS.connect(`map:${mapId}`);
+    if (mode === "dm") HexWS.subscribe(`map:${mapId}:dm`);
+    HexWS.on("token.move", (_payload, msg) => {
+      if (String(msg.map_id) !== String(mapId)) return;
+      if (tokensLayer) tokensLayer.inst.update({ token_id: msg.token_id, x: msg.x, y: msg.y });
+    });
+    HexWS.on("map_changed", (_payload, msg) => {
+      if (String(msg.map_id) === String(mapId)) refresh();
+    });
+  }
+
+  // Expose the layer table for tests/other tasks.
   host._hexLayers = layers;
   host._hexRefresh = refresh;
 }
