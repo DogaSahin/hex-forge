@@ -135,6 +135,33 @@ export function mountEditor(host) {
       await fetch(`/map/${mapId}/fog`, { method: "POST", body: new URLSearchParams({ op, geom }) });
       refresh();
     });
+
+    // Freehand brush reveal
+    let brushPts = null;
+    stage.on("mousedown touchstart", () => {
+      if (host.dataset.tool !== "reveal-brush") return;
+      const p = stage.getPointerPosition();
+      if (!p) return;
+      brushPts = [p.x, p.y];
+    });
+    stage.on("mousemove touchmove", () => {
+      if (host.dataset.tool !== "reveal-brush" || !brushPts) return;
+      const p = stage.getPointerPosition();
+      if (!p) return;
+      brushPts.push(p.x, p.y);
+    });
+    stage.on("mouseup touchend", async () => {
+      if (host.dataset.tool !== "reveal-brush" || !brushPts) return;
+      const pts = brushPts;
+      brushPts = null;
+      if (pts.length < 6) return;
+      const geom = JSON.stringify({ type: "path", points: pts.map((n) => Math.round(n)) });
+      await fetch(`/map/${mapId}/fog`, {
+        method: "POST",
+        body: new URLSearchParams({ op: "reveal", geom }),
+      });
+      refresh();
+    });
   }
 
   // WS wiring is added in Slice 6; expose the layer table for those tasks.
