@@ -15,6 +15,7 @@ from app.core.websocket import manager
 from app.modules.maps.fog import reduce_ops
 from app.modules.maps.geometry import clamp_hp, snap_to_grid
 from app.modules.maps.models import DIAGONAL_RULES, FogRegion, Map, Token
+from app.modules.maps.projection import player_state
 from app.modules.maps.uploads import store_map_image, store_token_image
 
 MODULE_DIR = Path(__file__).resolve().parent
@@ -239,6 +240,19 @@ def map_state(
     if m is None:
         return {"map": None, "tokens": [], "fog": []}
     return {"map": _map_dict(m), "tokens": _tokens_dm(db, m.id), "fog": _fog_ops(db, m.id)}
+
+
+@router.get("/{map_id}/player-state")
+def map_player_state(
+    map_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> dict:
+    m = _owned_map(db, map_id, campaign.id)
+    if m is None:
+        return {"map": None, "tokens": [], "fog": []}
+    tokens = db.query(Token).filter_by(map_id=m.id).order_by(Token.id).all()
+    return player_state(_map_dict(m), tokens, _fog_ops(db, m.id))
 
 
 def _tokens_dm(db: Session, map_id: int) -> list[dict]:

@@ -1,0 +1,155 @@
+from __future__ import annotations
+
+import re
+
+from fastapi.testclient import TestClient
+
+from app.core.server import create_app
+from app.modules.maps.models import Token
+from app.modules.maps.projection import project_tokens
+
+
+def _tok(**kw):
+    base = dict(
+        id=1,
+        map_id=1,
+        layer="tokens",
+        kind="disc",
+        x=0,
+        y=0,
+        size=1,
+        color="#fff",
+        image_path=None,
+        name="T",
+        hp_current=None,
+        hp_max=None,
+        hp_visible_to_players=False,
+        visible_to_players=True,
+        meta_json="{}",
+    )
+    base.update(kw)
+    t = Token(**{k: v for k, v in base.items() if k != "id"})
+    t.id = base["id"]
+    return t
+
+
+def test_hidden_and_dm_tokens_excluded():
+    tokens = [
+        _tok(id=1, name="Seen", visible_to_players=True, layer="tokens"),
+        _tok(id=2, name="Hidden", visible_to_players=False, layer="tokens"),
+        _tok(id=3, name="Secret", visible_to_players=True, layer="dm"),
+    ]
+    out = project_tokens(tokens)
+    names = {o["name"] for o in out}
+    assert names == {"Seen"}
+
+
+def test_visible_token_included_with_expected_fields():
+    tokens = [
+        _tok(
+            id=7,
+            name="Hero",
+            x=140,
+            y=210,
+            size=2,
+            color="#abc123",
+            image_path="tokens/hero.png",
+        )
+    ]
+    out = project_tokens(tokens)
+    assert len(out) == 1
+    d = out[0]
+    assert d == {
+        "id": 7,
+        "x": 140,
+        "y": 210,
+        "size": 2,
+        "color": "#abc123",
+        "image_path": "tokens/hero.png",
+        "name": "Hero",
+        "layer": "tokens",
+    }
+
+
+def test_no_hp_numbers_leak():
+    tokens = [_tok(id=1, name="Wounded", hp_current=7, hp_max=30, hp_visible_to_players=True)]
+    out = project_tokens(tokens)
+    assert "hp_current" not in out[0]
+    assert "hp_max" not in out[0]
+    assert out[0]["hp_band"] == "low"  # 7/30 <= .25
+
+
+def test_hp_hidden_when_flag_off():
+    tokens = [_tok(id=1, hp_current=7, hp_max=30, hp_visible_to_players=False)]
+    out = project_tokens(tokens)
+    assert "hp_band" not in out[0]
+    assert "hp_current" not in out[0]
+    assert "hp_max" not in out[0]
+
+
+def _make_map(client, name):
+    client.post("/map", data={"name": name})
+    txt = client.get("/map", headers={"HX-Request": "true"}).text
+    m = re.search(rf'/map/(\d+)"[^>]*>{re.escape(name)}<', txt)
+    assert m is not None
+    return int(m.group(1))
+
+
+def test_player_state_endpoint_filters():
+    client = TestClient(create_app())
+    mid = _make_map(client, "Player State Filters")
+    client.post(f"/map/{mid}/token", data={"name": "Seen", "layer": "tokens"})
+    client.post(f"/map/{mid}/token", data={"name": "Secret", "layer": "dm"})
+    ps = client.get(f"/map/{mid}/player-state").json()
+    names = {t["name"] for t in ps["tokens"]}
+    assert "Secret" not in names
+    assert "Seen" in names
+
+
+def test_player_state_missing_map_is_placeholder():
+    client = TestClient(create_app())
+    body = client.get("/map/999999/player-state").json()
+    assert body == {"map": None, "tokens": [], "fog": []}
+
+
+def test_player_state_no_leak_of_hp_numbers_or_secret_names():
+    from app.core.database import SessionLocal
+
+    client = TestClient(create_app())
+    mid = _make_map(client, "Player State Leak Guard")
+
+    # Visible token, no HP tracked.
+    client.post(f"/map/{mid}/token", data={"name": "Visible Ally", "layer": "tokens"})
+    # Hidden token (visible_to_players=False) with real HP numbers.
+    client.post(f"/map/{mid}/token", data={"name": "Hidden Foe", "layer": "tokens"})
+    # DM-layer secret token, distinctively named.
+    client.post(f"/map/{mid}/token", data={"name": "SECRET_AMBUSH", "layer": "dm"})
+
+    db = SessionLocal()
+    try:
+        hidden = db.query(Token).filter_by(map_id=mid, name="Hidden Foe").first()
+        hidden.visible_to_players = False
+        hidden.hp_max = 45
+        hidden.hp_current = 12
+        hidden.hp_visible_to_players = False
+
+        visible = db.query(Token).filter_by(map_id=mid, name="Visible Ally").first()
+        visible.hp_max = 40
+        visible.hp_current = 39
+        visible.hp_visible_to_players = True
+
+        secret = db.query(Token).filter_by(map_id=mid, name="SECRET_AMBUSH").first()
+        secret.hp_max = 999
+        secret.hp_current = 999
+        db.commit()
+    finally:
+        db.close()
+
+    r = client.get(f"/map/{mid}/player-state")
+    body = r.text
+
+    assert "hp_current" not in body
+    assert "hp_max" not in body
+    assert "SECRET_AMBUSH" not in body
+    assert "Hidden Foe" not in body
+    assert "Visible Ally" in body
