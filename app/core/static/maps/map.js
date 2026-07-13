@@ -28,8 +28,10 @@ export function mountEditor(host) {
   const tokensLayer = layers.find((l) => l.name === "tokens");
   if (tokensLayer && mode === "dm") {
     tokensLayer.inst.konvaLayer.on("dragend", async (e) => {
-      const group = e.target.hasName ? e.target : e.target.findAncestor("Group");
-      const tid = group.getAttr("tokenId");
+      // Only token Groups are draggable, so e.target is normally the Group itself;
+      // fall back to the ancestor Group if a child shape ever becomes the target.
+      const group = e.target.getAttr("tokenId") ? e.target : e.target.findAncestor("Group");
+      const tid = group && group.getAttr("tokenId");
       if (!tid) return;
       const st = host._lastState || {};
       const m = st.map || {};
