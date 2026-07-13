@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import math
-
 import pytest
 
 from app.modules.maps.distance import path_distance, segment_distance
@@ -21,10 +19,19 @@ from app.modules.maps.distance import path_distance, segment_distance
     ],
 )
 def test_segment_rules(dx, dy, rule, expected):
-    # recompute euclidean expectation explicitly to avoid table mistakes
-    if rule == "euclidean":
-        expected = round(math.sqrt(dx * dx + dy * dy)) * 5
     assert segment_distance(dx, dy, 5, rule) == expected
+
+
+def test_segment_negative_deltas():
+    """Negative deltas are absorbed by abs(); results match positive equivalents."""
+    # euclidean: (-3, 4) → abs: (3, 4) → sqrt(9+16)=5 → round(5)=5 → 5*5=25
+    assert segment_distance(-3, 4, 5, "euclidean") == 25
+    # chebyshev: (-4, -2) → abs: (4, 2) → max(4,2)=4 → 4*5=20
+    assert segment_distance(-4, -2, 5, "chebyshev") == 20
+    # five_ten_five: (-4, 2) → abs: (4, 2) → (4+2//2)*5=(4+1)*5=25
+    assert segment_distance(-4, 2, 5, "five_ten_five") == 25
+    # manhattan: (3, -2) → abs: (3, 2) → (3+2)*5=25
+    assert segment_distance(3, -2, 5, "manhattan") == 25
 
 
 def test_segment_diagonal_chebyshev():
@@ -70,3 +77,13 @@ def test_path_distance_multiple_segments():
     # total = 5 + 5 = 10
     pts = [(0, 0), (70, 0), (140, 70)]
     assert path_distance(pts, 5, "chebyshev", 70) == 10
+
+
+def test_path_distance_backward_leg():
+    """Negative deltas in path legs (x or y decreasing) are handled by abs()."""
+    # 70px grid, chebyshev, feet=5
+    # leg1: (140,0) to (0,0) → dx=abs(0-140)=140, dy=abs(0-0)=0 → 140//70=2 squares → 2*5=10 ft
+    # leg2: (0,0) to (0,70) → dx=abs(0-0)=0, dy=abs(70-0)=70 → 70//70=1 square → 1*5=5 ft
+    # total = 10 + 5 = 15
+    pts = [(140, 0), (0, 0), (0, 70)]
+    assert path_distance(pts, 5, "chebyshev", 70) == 15
