@@ -14,6 +14,18 @@ export function mountEditor(host) {
     .map((f) => ({ name: f.name, inst: f.make(ctx) }));
   layers.forEach((l) => stage.add(l.inst.konvaLayer));
 
+  const tokensLayer = layers.find((l) => l.name === "tokens");
+
+  // Tokens are only draggable while the "select" tool is active. Otherwise a click-drag on a
+  // token would both move it (POST /token/{id}/move) and trigger whatever fog/measure tool is
+  // active underneath it (e.g. posting a stray fog region). DM mode only — the player surface
+  // never wires drag handlers in the first place.
+  function applyTokenDraggable() {
+    if (tokensLayer && mode === "dm") {
+      tokensLayer.inst.setDraggable(host.dataset.tool === "select");
+    }
+  }
+
   const stateUrl = mode === "player" ? `/map/${mapId}/player-state` : `/map/${mapId}/state`;
   async function refresh() {
     const state = await fetch(stateUrl).then((r) => r.json());
@@ -21,12 +33,17 @@ export function mountEditor(host) {
     host._lastState = state;
     stage.size({ width: state.map.image_w || 1200, height: state.map.image_h || 800 });
     layers.forEach((l) => l.inst.render(state));
+    // Tokens are recreated by render(), so draggability must be re-applied every time.
+    applyTokenDraggable();
   }
   refresh();
   host.addEventListener("map:refresh", refresh);
 
-  const tokensLayer = layers.find((l) => l.name === "tokens");
   if (tokensLayer && mode === "dm") {
+    // Keep draggability in sync the moment the DM switches tools.
+    const dragToolObserver = new MutationObserver(applyTokenDraggable);
+    dragToolObserver.observe(host, { attributes: true, attributeFilter: ["data-tool"] });
+
     tokensLayer.inst.konvaLayer.on("dragend", async (e) => {
       // Only token Groups are draggable, so e.target is normally the Group itself;
       // fall back to the ancestor Group if a child shape ever becomes the target.

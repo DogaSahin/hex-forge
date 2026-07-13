@@ -39,6 +39,11 @@ export function createTokensLayer(ctx) {
       const node = layer.findOne(`#tok-${delta.token_id}`);
       if (node) { node.position({ x: delta.x, y: delta.y }); layer.draw(); }
     },
+    setDraggable(draggable) {
+      // Applies to all token Groups currently on the layer. Tokens are recreated on every
+      // render(), so callers must re-apply this after each render()/refresh().
+      layer.getChildren().forEach((group) => group.draggable(!!draggable));
+    },
     destroy() { layer.destroy(); },
   };
   return api;
