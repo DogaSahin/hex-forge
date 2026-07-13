@@ -32,7 +32,7 @@
     </form>
   </div>
   <div class="map-canvas-wrap">
-    <div id="map-stage" data-map-id="{{ map.id }}" data-mode="dm"
+    <div id="map-stage" data-map-id="{{ map.id }}" data-mode="dm" data-dm-topic="map:{{ map.id }}:dm"
          x-bind:data-tool="tool" x-bind:data-snap="snap"></div>
   </div>
   <div id="token-menu-host"></div>

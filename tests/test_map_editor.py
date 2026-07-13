@@ -24,6 +24,18 @@ def test_editor_fragment_has_stage_host():
     assert 'id="map-stage"' in r.text
 
 
+def test_editor_fragment_renders_explicit_dm_topic():
+    """The DM channel is opt-in: the DM editor must render an explicit data-dm-topic
+    attribute (map.js never derives the dm topic string from data-mode alone). This is
+    the affirmative opt-in a player template can never structurally produce."""
+    client = TestClient(create_app())
+    mid = _make_map(client, "Editor Map DM Topic")
+    r = client.get(f"/map/{mid}")
+    assert r.status_code == 200
+    assert f'data-dm-topic="map:{mid}:dm"' in r.text
+    assert 'data-mode="dm"' in r.text
+
+
 def test_state_shape():
     client = TestClient(create_app())
     mid = _make_map(client, "Editor Map State")

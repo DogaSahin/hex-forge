@@ -5,7 +5,9 @@ export function mountEditor(host) {
   if (!host || host.dataset.mounted) return;
   host.dataset.mounted = "1";
   const mapId = host.dataset.mapId;
-  const mode = host.dataset.mode || "dm";
+  // Fail closed: only the exact string "dm" grants the privileged surface. Anything
+  // missing, mistyped, or otherwise unexpected is treated as the player surface.
+  const mode = host.dataset.mode === "dm" ? "dm" : "player";
 
   const stage = new Konva.Stage({ container: host, width: host.clientWidth || 1200, height: 800 });
   const ctx = { stage, mode, mapId };
@@ -181,12 +183,15 @@ export function mountEditor(host) {
     });
   }
 
-  // Live sync: player subscribes to the player-safe `map:{id}` topic only; the DM also
-  // subscribes to the dm-only `map:{id}:dm` topic so hidden/dm-layer token moves reach the
-  // DM window without ever touching a socket the player could be listening on.
+  // Live sync: every surface subscribes to the player-safe `map:{id}` topic. The dm-only
+  // `map:{id}:dm` topic is subscribed to ONLY if the server rendered an explicit
+  // data-dm-topic attribute — the topic string is never derived here from `mode`, so a
+  // player template that structurally never emits data-dm-topic cannot reach it even if
+  // data-mode were ever wrong (missing, typo'd, or spoofed).
   if (window.HexWS) {
     HexWS.connect(`map:${mapId}`);
-    if (mode === "dm") HexWS.subscribe(`map:${mapId}:dm`);
+    const dmTopic = host.dataset.dmTopic;
+    if (dmTopic) HexWS.subscribe(dmTopic);
     HexWS.on("token.move", (_payload, msg) => {
       if (String(msg.map_id) !== String(mapId)) return;
       if (tokensLayer) tokensLayer.inst.update({ token_id: msg.token_id, x: msg.x, y: msg.y });
