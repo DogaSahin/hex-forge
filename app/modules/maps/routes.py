@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
 from app.core.websocket import manager
+from app.modules.maps.geometry import snap_to_grid
 from app.modules.maps.models import DIAGONAL_RULES, Map, Token
 from app.modules.maps.uploads import store_map_image, store_token_image
 
@@ -271,6 +272,7 @@ async def move_token(
     token_id: int,
     x: str = Form("0"),
     y: str = Form("0"),
+    snap: str = Form(""),
     db: Session = Depends(get_db),
     campaign: Campaign = Depends(get_active_campaign),
 ) -> dict:
@@ -279,6 +281,10 @@ async def move_token(
         return {"ok": False}
     t.x = _int_or(x, t.x)
     t.y = _int_or(y, t.y)
+    if snap:
+        m = db.get(Map, t.map_id)
+        if m is not None:
+            t.x, t.y = snap_to_grid(t.x, t.y, m.grid_size_px, m.grid_offset_x, m.grid_offset_y)
     db.commit()
     await _publish_token_move(t)
     return {"ok": True}

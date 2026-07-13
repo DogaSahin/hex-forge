@@ -43,7 +43,7 @@ export function mountEditor(host) {
         group.position({ x, y });
         group.getLayer().draw();
       }
-      const body = new URLSearchParams({ x: Math.round(x), y: Math.round(y) });
+      const body = new URLSearchParams({ x: Math.round(x), y: Math.round(y), snap: host.dataset.snap === "true" ? "1" : "" });
       await fetch(`/token/${tid}/move`, { method: "POST", body });
     });
   }
