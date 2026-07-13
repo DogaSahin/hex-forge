@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
@@ -11,8 +12,9 @@ from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
 from app.core.websocket import manager
+from app.modules.maps.fog import reduce_ops
 from app.modules.maps.geometry import clamp_hp, snap_to_grid
-from app.modules.maps.models import DIAGONAL_RULES, Map, Token
+from app.modules.maps.models import DIAGONAL_RULES, FogRegion, Map, Token
 from app.modules.maps.uploads import store_map_image, store_token_image
 
 MODULE_DIR = Path(__file__).resolve().parent
@@ -245,7 +247,9 @@ def _tokens_dm(db: Session, map_id: int) -> list[dict]:
 
 
 def _fog_ops(db: Session, map_id: int) -> list[dict]:
-    return []  # Task 21 fills this
+    rows = db.query(FogRegion).filter_by(map_id=map_id).order_by(FogRegion.seq, FogRegion.id).all()
+    ops = [{"op": r.op, "geom": json.loads(r.geom_json)} for r in rows]
+    return reduce_ops(ops)
 
 
 def _map_dict(m: Map) -> dict:
