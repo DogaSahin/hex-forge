@@ -3,7 +3,7 @@
 // client-side live label always agrees with any server-computed distance for the same
 // map meta (grid_size_px / feet_per_square / diagonal_rule).
 
-function segmentFeet(dx, dy, feet, rule) {
+export function segmentFeet(dx, dy, feet, rule) {
   dx = Math.abs(dx);
   dy = Math.abs(dy);
   const hi = Math.max(dx, dy);
