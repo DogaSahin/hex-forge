@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core import broadcast
@@ -75,10 +76,10 @@ def editor(
     campaign: Campaign = Depends(get_active_campaign),
 ) -> HTMLResponse:
     m = _owned_map(db, map_id, campaign.id)
-    return _editor_response(request, db, m)
+    return _editor_response(request, m)
 
 
-def _editor_response(request: Request, db: Session, m: Map | None) -> HTMLResponse:
+def _editor_response(request: Request, m: Map | None) -> HTMLResponse:
     return templates.TemplateResponse(request, "_editor.html", {"map": m})
 
 
@@ -123,8 +124,6 @@ async def delete_map(
 ) -> HTMLResponse:
     m = _owned_map(db, map_id, campaign.id)
     if m is not None:
-        # Token/FogRegion rows are cleaned here (tables arrive in Tasks 9/20;
-        # these deletes are guarded so this works before and after those tables exist).
         _delete_map_children(db, m.id)
         db.delete(m)
         db.commit()
@@ -179,14 +178,9 @@ async def stop_sharing(
 
 
 def _delete_map_children(db: Session, map_id: int) -> None:
-    """Remove tokens + fog for a map. No-ops cleanly until those tables exist."""
-    try:
-        from app.modules.maps.models import FogRegion, Token
-
-        db.query(Token).filter_by(map_id=map_id).delete(synchronize_session=False)
-        db.query(FogRegion).filter_by(map_id=map_id).delete(synchronize_session=False)
-    except ImportError:
-        pass
+    """Remove tokens + fog for a map."""
+    db.query(Token).filter_by(map_id=map_id).delete(synchronize_session=False)
+    db.query(FogRegion).filter_by(map_id=map_id).delete(synchronize_session=False)
 
 
 @router.post("/{map_id}/image", response_class=HTMLResponse)
@@ -203,7 +197,7 @@ def upload_image(
         if rel and not error:
             m.image_path, m.image_w, m.image_h = rel, w, h
             db.commit()
-    return _editor_response(request, db, m)
+    return _editor_response(request, m)
 
 
 @router.post("/{map_id}/token", response_class=HTMLResponse)
@@ -233,7 +227,7 @@ def create_token(
             )
         )
         db.commit()
-    return _editor_response(request, db, m)
+    return _editor_response(request, m)
 
 
 def _int_or(value: str, default: int) -> int:
@@ -313,8 +307,8 @@ def _fog_ops(db: Session, map_id: int) -> list[dict]:
 
 
 def _next_fog_seq(db: Session, map_id: int) -> int:
-    rows = db.query(FogRegion).filter_by(map_id=map_id).all()
-    return max((r.seq for r in rows), default=-1) + 1
+    current_max = db.query(func.max(FogRegion.seq)).filter_by(map_id=map_id).scalar()
+    return (current_max if current_max is not None else -1) + 1
 
 
 @router.post("/{map_id}/fog")
@@ -349,10 +343,14 @@ async def fog_reveal_all(
     m = _owned_map(db, map_id, campaign.id)
     if m is None:
         return {"ok": False}
+    # A reveal-all supersedes every prior op for this map (reduce_ops collapses
+    # to just this row anyway), so prune them instead of letting fog_region
+    # grow unbounded across repeated reveal-alls.
+    db.query(FogRegion).filter_by(map_id=m.id).delete(synchronize_session=False)
     db.add(
         FogRegion(
             map_id=m.id,
-            seq=_next_fog_seq(db, m.id),
+            seq=0,
             op="reveal",
             geom_json=json.dumps({"type": "all"}),
         )
@@ -460,7 +458,7 @@ def upload_token_image(
             t.image_path, t.kind = rel, "image"
             db.commit()
     m = db.get(Map, t.map_id) if t is not None else None
-    return _editor_response(request, db, m)
+    return _editor_response(request, m)
 
 
 @token_router.post("/{token_id}", response_class=HTMLResponse)
@@ -503,7 +501,7 @@ async def edit_token(
             t.hp_visible_to_players = bool(hp_visible_to_players)
         db.commit()
         await _publish_map_changed(t.map_id)
-    return _editor_response(request, db, m)
+    return _editor_response(request, m)
 
 
 @token_router.post("/{token_id}/delete", response_class=HTMLResponse)
@@ -520,7 +518,7 @@ async def delete_token(
         db.delete(t)
         db.commit()
         await _publish_map_changed(map_id)
-    return _editor_response(request, db, m)
+    return _editor_response(request, m)
 
 
 @token_router.get("/{token_id}/menu", response_class=HTMLResponse)
