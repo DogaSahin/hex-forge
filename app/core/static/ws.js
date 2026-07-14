@@ -4,6 +4,11 @@
   let socket = null;
 
   function connect(topic) {
+    // Each mount (map/encounter) calls connect() again; without closing the
+    // prior socket first, every remount leaks an open WebSocket.
+    if (socket && socket.readyState !== WebSocket.CLOSING && socket.readyState !== WebSocket.CLOSED) {
+      socket.close();
+    }
     const proto = location.protocol === "https:" ? "wss" : "ws";
     const url = `${proto}://${location.host}/ws?topic=${encodeURIComponent(topic || "broadcast")}`;
     socket = new WebSocket(url);
@@ -21,9 +26,10 @@
   }
 
   function subscribe(topic) {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ topic, action: "subscribe", payload: {} }));
-    }
+    const frame = JSON.stringify({ topic, action: "subscribe", payload: {} });
+    if (!socket) return;
+    if (socket.readyState === WebSocket.OPEN) socket.send(frame);
+    else socket.addEventListener("open", () => socket.send(frame), { once: true });
   }
 
   function on(action, handler) {

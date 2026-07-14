@@ -19,6 +19,7 @@ from app.core import models  # noqa: E402,F401  (register tables on Base.metadat
 from app.core.database import Base  # noqa: E402
 from app.modules.dice import models as dice_models  # noqa: E402,F401
 from app.modules.factions import models as factions_models  # noqa: E402,F401
+from app.modules.maps import models as _maps_models  # noqa: E402,F401
 from app.modules.npcs import models as npcs_models  # noqa: E402,F401
 
 config = context.config

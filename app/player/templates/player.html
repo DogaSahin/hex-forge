@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Hexforge — Player Screen</title>
   <script src="/static/vendor/htmx.min.js" defer></script>
+  <script src="/static/vendor/konva.min.js" defer></script>
   <script src="/static/ws.js" defer></script>
   <style>
     :root {
@@ -15,6 +16,7 @@
     body { margin:0; background:var(--bg); color:var(--fg);
            font-family: system-ui, sans-serif; min-height:100vh; }
     #stage { max-width: 900px; margin: 0 auto; padding: 4vh 4vw; }
+    #player-map { width: 100%; max-width: 100vw; overflow: auto; }
     .mirror-idle, .mirror-empty { color:var(--muted); font-size:1.4rem;
            text-align:center; margin-top:18vh; }
     .mirror-title { font-size:2rem; margin:0 0 .2em; }
@@ -34,9 +36,12 @@
 </head>
 <body>
   <div id="stage"><div class="mirror-idle">Connecting…</div></div>
+  <div id="player-map" style="display:none"></div>
   <script>
   document.addEventListener("DOMContentLoaded", function () {
-    var activeEnc = null;
+    var activeEnc; // undefined so the first refresh always runs loadMirror(), even
+                   // when there is no active encounter (clears the "Connecting…" banner)
+    var activeMap = null;
     function loadMirror(encId) {
       var stage = document.getElementById("stage");
       if (encId) {
@@ -45,6 +50,30 @@
       } else {
         stage.innerHTML = '<div class="mirror-idle">Nothing is being shared.</div>';
       }
+    }
+    function mountMap(mapId) {
+      var host = document.getElementById("player-map");
+      // Clear any previous mount (innerHTML + the mountEditor guard flag) so switching
+      // to a different active map re-mounts cleanly instead of leaving the old map up.
+      host.innerHTML = "";
+      delete host.dataset.mounted;
+      host.style.display = "block";
+      host.dataset.mapId = mapId;
+      // Player-only, always: the dm-only topic attribute is never set here, so map.js
+      // can never reach the dm-only topic from this surface (the two-surface boundary).
+      host.dataset.mode = "player";
+      // No subscribe call here: mountEditor (below) calls HexWS.connect("map:"+mapId),
+      // which already opens/subscribes that topic on the single shared socket. An extra
+      // subscribe would land on whatever socket predates it and double-deliver frames.
+      import("/static/maps/map.js").then(function (mod) {
+        mod.mountEditor(host);
+      });
+    }
+    function hideMap() {
+      var host = document.getElementById("player-map");
+      host.style.display = "none";
+      host.innerHTML = "";
+      delete host.dataset.mounted;
     }
     function refreshState() {
       fetch("/player/state")
@@ -55,6 +84,15 @@
             activeEnc = enc;
             if (enc && window.HexWS) { HexWS.subscribe("combat:" + enc); }
             loadMirror(enc);
+          }
+          var mapId = s.active_map_id;
+          if (mapId !== activeMap) {
+            activeMap = mapId;
+            if (mapId) {
+              mountMap(mapId);
+            } else {
+              hideMap();
+            }
           }
         });
     }

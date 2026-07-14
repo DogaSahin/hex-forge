@@ -46,6 +46,14 @@ def set_active_encounter(db: Session, campaign_id: int, encounter_id: int | None
     return state
 
 
+def set_active_map(db: Session, campaign_id: int, map_id: int | None) -> BroadcastState:
+    state = get_state(db, campaign_id)
+    state.active_map_id = map_id
+    db.commit()
+    db.refresh(state)
+    return state
+
+
 def snapshot(db: Session, campaign_id: int) -> dict:
     """The player-visible pointer state — ids only, never module content."""
     state = get_state(db, campaign_id)

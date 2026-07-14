@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Maps · Hexforge{% endblock %}
+{% block content %}
+<div class="maps" x-data="{ selected: null }">
+  <section class="maps-list">
+    <form hx-post="/map" hx-target="#map-list" hx-swap="outerHTML" class="row-form">
+      <input type="text" name="name" placeholder="New map name" required>
+      <button type="submit" class="btn btn-accent">Add map</button>
+    </form>
+    {% include "_map_list.html" %}
+  </section>
+  <section class="maps-editor" id="map-editor">
+    <p class="muted">Select a map to open the editor.</p>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/vendor/konva.min.js" defer></script>
+<script src="/static/maps/map.js" type="module" defer></script>
+{% endblock %}

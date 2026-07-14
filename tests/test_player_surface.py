@@ -26,6 +26,10 @@ def test_player_shell_is_standalone_read_only():
     assert "HexWS" in body
     assert "broadcast_changed" in body
     assert "/player/state" in body
+    # The dm-only map topic attribute is the sole authorization for map:{id}:dm — the
+    # player shell must never emit it, and must always mount in player mode.
+    assert "data-dm-topic" not in body
+    assert 'dataset.mode = "player"' in body
 
 
 def test_player_state_reflects_set_active():

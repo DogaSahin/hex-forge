@@ -50,20 +50,38 @@ Early and actively built. Working today:
     the round on wrap;
   - changes **sync live** — open the tracker in a second window (e.g. on another screen) and it mirrors
     the first as you play.
+- **Maps** (`/map`) — a tactical battle map, the centrepiece of the toolkit:
+  - upload a map image and lay a **square grid** over it — configurable square size, offset (to line the
+    grid up with art that already has one), feet per square, and a show/hide toggle;
+  - drop **tokens** (a coloured disc or uploaded art), size them in squares, rename, recolour, give them
+    HP, and **drag them around** with optional snap-to-grid;
+  - a **ruler** for measuring range: click to lay out a path with as many waypoints as you like and read
+    the running total in feet. Each map picks its own **diagonal rule** — Chebyshev (5e), the 5-10-5
+    variant, Euclidean, or Manhattan — and switching it changes what the ruler reports;
+  - **fog of war**: reveal by rectangle or freehand brush, re-hide areas, or reveal/hide the whole map.
+    The DM sees through the fog at half opacity while the table sees it solid;
+  - a **DM layer** for secret tokens, plus a per-token "visible to players" switch — hidden things stay
+    hidden;
+  - **Push to players** shares the map with the player screen (and **Stop sharing** takes it back).
 - **Player Screen** (`/player`) — a read-only second view for a TV or second monitor. Click **Open
-  player screen** in the top bar to launch it, then set an encounter active in the Combat Tracker and the
-  player view mirrors it **live**: initiative order, names, whose turn it is, and a color-banded health
-  indicator per combatant. It deliberately shows **no hidden information** — no HP numbers, no AC, no
-  conditions, no DM controls — so the table sees only what you choose to present. When nothing is active
-  it simply shows a "nothing is being shared" screen.
-
-Further modules (maps with fog) are on the way.
+  player screen** in the top bar to launch it, then present what you want the table to see:
+  - set an encounter active and it mirrors the fight **live** — initiative order, names, whose turn it
+    is, and a color-banded health indicator per combatant;
+  - push a map and it mirrors that too, **live**: tokens move as you drag them and fog clears as you
+    reveal it.
+  - It deliberately shows **no hidden information** — no HP numbers, no AC, no conditions, no DM
+    controls, no secret tokens, and nothing on the DM layer — so the table sees only what you choose to
+    present. HP is shown only as a colour band, and only for tokens you explicitly share it for. When
+    nothing is being shared it simply says so.
 
 ## Tech stack
 
 - **Backend:** FastAPI + Uvicorn (async, native WebSockets, single process)
 - **Data:** SQLAlchemy 2.x + SQLite, with Alembic migrations
 - **Frontend:** Jinja2 server-rendered fragments + HTMX + Alpine.js (minimal custom JS)
+- **Map canvas:** Konva.js (layered 2D rendering), vendored locally — like every other front-end
+  dependency, so the app runs fully offline
+- **Images:** Pillow (reads the dimensions of uploaded maps and tokens)
 - **Desktop packaging:** pywebview + PyInstaller (added at the packaging stage; in dev you just run a
   local server and open it in a browser)
 

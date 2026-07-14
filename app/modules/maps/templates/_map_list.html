@@ -1,0 +1,12 @@
+<ul id="map-list" class="map-list">
+  {% for m in maps %}
+  <li class="map-list-item {% if m.is_active %}is-active{% endif %}">
+    <a hx-get="/map/{{ m.id }}" hx-target="#map-editor" hx-swap="innerHTML" href="#">{{ m.name }}</a>
+    {% if m.is_active %}<span class="pill pill-accent">Live</span>{% endif %}
+    <form hx-post="/map/{{ m.id }}/delete" hx-target="#map-list" hx-swap="outerHTML"
+          hx-confirm="Delete this map?">
+      <button type="submit" class="btn btn-ghost">✕</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>

@@ -1,0 +1,23 @@
+{# app/modules/maps/templates/_settings.html #}
+{% if map is not none %}
+<form class="map-settings" hx-post="/map/{{ map.id }}/settings"
+      hx-target="this" hx-swap="outerHTML"
+      hx-on::after-request="document.getElementById('map-stage').dispatchEvent(new CustomEvent('map:refresh'))">
+  <fieldset>
+    <legend>Grid</legend>
+    <label>Square px <input type="number" name="grid_size_px" value="{{ map.grid_size_px }}" min="1"></label>
+    <label>Offset X <input type="number" name="grid_offset_x" value="{{ map.grid_offset_x }}"></label>
+    <label>Offset Y <input type="number" name="grid_offset_y" value="{{ map.grid_offset_y }}"></label>
+    <label><input type="checkbox" name="grid_visible" {% if map.grid_visible %}checked{% endif %}> Show grid</label>
+    <label>Ft / square <input type="number" name="feet_per_square" value="{{ map.feet_per_square }}" min="1"></label>
+    <label>Diagonal rule
+      <select name="diagonal_rule">
+        {% for r in ["chebyshev", "five_ten_five", "euclidean", "manhattan"] %}
+        <option value="{{ r }}" {% if map.diagonal_rule == r %}selected{% endif %}>{{ r }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="btn">Save grid</button>
+  </fieldset>
+</form>
+{% endif %}

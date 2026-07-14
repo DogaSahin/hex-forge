@@ -1,0 +1,207 @@
+import { LAYER_FACTORIES } from "./layers/index.js";
+import { snapToGrid } from "./snap.js";
+
+export function mountEditor(host) {
+  if (!host || host.dataset.mounted) return;
+  host.dataset.mounted = "1";
+  const mapId = host.dataset.mapId;
+  // Fail closed: only the exact string "dm" grants the privileged surface. Anything
+  // missing, mistyped, or otherwise unexpected is treated as the player surface.
+  const mode = host.dataset.mode === "dm" ? "dm" : "player";
+
+  const stage = new Konva.Stage({ container: host, width: host.clientWidth || 1200, height: 800 });
+  const ctx = { stage, mode, mapId };
+  const layers = LAYER_FACTORIES
+    .filter((f) => f.modes.includes(mode))
+    .map((f) => ({ name: f.name, inst: f.make(ctx) }));
+  layers.forEach((l) => stage.add(l.inst.konvaLayer));
+
+  const tokensLayer = layers.find((l) => l.name === "tokens");
+
+  // Tokens are only draggable while the "select" tool is active. Otherwise a click-drag on a
+  // token would both move it (POST /token/{id}/move) and trigger whatever fog/measure tool is
+  // active underneath it (e.g. posting a stray fog region). DM mode only — the player surface
+  // never wires drag handlers in the first place.
+  function applyTokenDraggable() {
+    if (tokensLayer && mode === "dm") {
+      tokensLayer.inst.setDraggable(host.dataset.tool === "select");
+    }
+  }
+
+  const stateUrl = mode === "player" ? `/map/${mapId}/player-state` : `/map/${mapId}/state`;
+  async function refresh() {
+    const state = await fetch(stateUrl).then((r) => r.json());
+    if (!state.map) return;
+    host._lastState = state;
+    stage.size({ width: state.map.image_w || 1200, height: state.map.image_h || 800 });
+    layers.forEach((l) => l.inst.render(state));
+    // Tokens are recreated by render(), so draggability must be re-applied every time.
+    applyTokenDraggable();
+  }
+  refresh();
+  host.addEventListener("map:refresh", refresh);
+
+  if (tokensLayer && mode === "dm") {
+    // Keep draggability in sync the moment the DM switches tools.
+    const dragToolObserver = new MutationObserver(applyTokenDraggable);
+    dragToolObserver.observe(host, { attributes: true, attributeFilter: ["data-tool"] });
+
+    tokensLayer.inst.konvaLayer.on("dragend", async (e) => {
+      // Only token Groups are draggable, so e.target is normally the Group itself;
+      // fall back to the ancestor Group if a child shape ever becomes the target.
+      const group = e.target.getAttr("tokenId") ? e.target : e.target.findAncestor("Group");
+      const tid = group && group.getAttr("tokenId");
+      if (!tid) return;
+      const st = host._lastState || {};
+      const m = st.map || {};
+      let { x, y } = group.position();
+      if (host.dataset.snap === "true") {
+        const s = snapToGrid(x, y, m.grid_size_px, m.grid_offset_x, m.grid_offset_y);
+        x = s.x;
+        y = s.y;
+        group.position({ x, y });
+        group.getLayer().draw();
+      }
+      const body = new URLSearchParams({ x: Math.round(x), y: Math.round(y), snap: host.dataset.snap === "true" ? "1" : "" });
+      await fetch(`/token/${tid}/move`, { method: "POST", body });
+    });
+
+    tokensLayer.inst.konvaLayer.on("dblclick dbltap", (e) => {
+      if (host.dataset.tool === "measure") return; // ruler owns dblclick while measuring
+      const group = e.target.getAttr("tokenId") ? e.target : e.target.findAncestor("Group");
+      const tid = group && group.getAttr("tokenId");
+      if (tid && window.htmx) {
+        htmx.ajax("GET", `/token/${tid}/menu`, { target: "#token-menu-host", swap: "innerHTML" });
+      }
+    });
+  }
+
+  const rulerLayer = layers.find((l) => l.name === "ruler");
+  if (rulerLayer && mode === "dm") {
+    let measuring = false;
+    stage.on("mousedown touchstart", () => {
+      if (host.dataset.tool !== "measure") return;
+      const p = stage.getPointerPosition();
+      if (!p) return;
+      rulerLayer.inst.setMeta((host._lastState || {}).map || {});
+      if (!measuring) {
+        rulerLayer.inst.beginAt([p.x, p.y]);
+        measuring = true;
+      } else {
+        rulerLayer.inst.addWaypoint([p.x, p.y]);
+      }
+    });
+    stage.on("mousemove touchmove", () => {
+      if (!measuring || host.dataset.tool !== "measure") return;
+      const p = stage.getPointerPosition();
+      if (p) rulerLayer.inst.moveTo([p.x, p.y]);
+    });
+    stage.on("dblclick dbltap", () => {
+      if (host.dataset.tool === "measure" && measuring) {
+        rulerLayer.inst.end();
+        measuring = false;
+      }
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && measuring) {
+        rulerLayer.inst.end();
+        measuring = false;
+      }
+    });
+
+    // Reset the ruler when the DM switches away from the measure tool.
+    const toolObserver = new MutationObserver(() => {
+      if (host.dataset.tool !== "measure" && measuring) {
+        rulerLayer.inst.end();
+        measuring = false;
+      }
+    });
+    toolObserver.observe(host, { attributes: true, attributeFilter: ["data-tool"] });
+  }
+
+  if (mode === "dm") {
+    // Rectangle reveal/hide
+    let fogStart = null;
+    stage.on("mousedown touchstart", () => {
+      const tool = host.dataset.tool;
+      if (tool !== "reveal-rect" && tool !== "hide") return;
+      const p = stage.getPointerPosition();
+      if (!p) return;
+      fogStart = [p.x, p.y];
+    });
+    stage.on("mouseup touchend", async () => {
+      const tool = host.dataset.tool;
+      if ((tool !== "reveal-rect" && tool !== "hide") || !fogStart) return;
+      const p = stage.getPointerPosition();
+      if (!p) {
+        fogStart = null;
+        return;
+      }
+      const x = Math.min(fogStart[0], p.x);
+      const y = Math.min(fogStart[1], p.y);
+      const w = Math.abs(p.x - fogStart[0]);
+      const h = Math.abs(p.y - fogStart[1]);
+      fogStart = null;
+      if (w < 3 || h < 3) return;
+      const op = tool === "hide" ? "hide" : "reveal";
+      const geom = JSON.stringify({
+        type: "rect",
+        x: Math.round(x),
+        y: Math.round(y),
+        w: Math.round(w),
+        h: Math.round(h),
+      });
+      await fetch(`/map/${mapId}/fog`, { method: "POST", body: new URLSearchParams({ op, geom }) });
+      refresh();
+    });
+
+    // Freehand brush reveal
+    let brushPts = null;
+    stage.on("mousedown touchstart", () => {
+      if (host.dataset.tool !== "reveal-brush") return;
+      const p = stage.getPointerPosition();
+      if (!p) return;
+      brushPts = [p.x, p.y];
+    });
+    stage.on("mousemove touchmove", () => {
+      if (host.dataset.tool !== "reveal-brush" || !brushPts) return;
+      const p = stage.getPointerPosition();
+      if (!p) return;
+      brushPts.push(p.x, p.y);
+    });
+    stage.on("mouseup touchend", async () => {
+      if (host.dataset.tool !== "reveal-brush" || !brushPts) return;
+      const pts = brushPts;
+      brushPts = null;
+      if (pts.length < 6) return;
+      const geom = JSON.stringify({ type: "path", points: pts.map((n) => Math.round(n)) });
+      await fetch(`/map/${mapId}/fog`, {
+        method: "POST",
+        body: new URLSearchParams({ op: "reveal", geom }),
+      });
+      refresh();
+    });
+  }
+
+  // Live sync: every surface subscribes to the player-safe `map:{id}` topic. The dm-only
+  // `map:{id}:dm` topic is subscribed to ONLY if the server rendered an explicit
+  // data-dm-topic attribute — the topic string is never derived here from `mode`, so a
+  // player template that structurally never emits data-dm-topic cannot reach it even if
+  // data-mode were ever wrong (missing, typo'd, or spoofed).
+  if (window.HexWS) {
+    HexWS.connect(`map:${mapId}`);
+    const dmTopic = host.dataset.dmTopic;
+    if (dmTopic) HexWS.subscribe(dmTopic);
+    HexWS.on("token.move", (_payload, msg) => {
+      if (String(msg.map_id) !== String(mapId)) return;
+      if (tokensLayer) tokensLayer.inst.update({ token_id: msg.token_id, x: msg.x, y: msg.y });
+    });
+    HexWS.on("map_changed", (_payload, msg) => {
+      if (String(msg.map_id) === String(mapId)) refresh();
+    });
+  }
+
+  // Expose the layer table for tests/other tasks.
+  host._hexLayers = layers;
+  host._hexRefresh = refresh;
+}

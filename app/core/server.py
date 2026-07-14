@@ -93,8 +93,11 @@ def create_app() -> FastAPI:
                 message = await websocket.receive_json()
                 if message.get("action") == "subscribe":
                     manager.subscribe(message.get("topic", topic), websocket)
-                else:
-                    await manager.publish(message.get("topic", topic), message)
+                # Any other inbound frame is ignored: the player screen is a
+                # subscriber only, and the DM-side clients only ever publish via
+                # server-side routes. Echoing an arbitrary client frame back onto
+                # a topic would let any socket forge state (e.g. a fake
+                # token.move) for every other subscriber to that topic.
         except WebSocketDisconnect:
             pass
         finally:
