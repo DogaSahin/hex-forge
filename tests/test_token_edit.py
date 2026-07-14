@@ -121,6 +121,20 @@ def test_toggle_visibility_flags_off():
     assert t["hp_visible_to_players"] is False
 
 
+def test_blank_hp_fields_stay_unset():
+    """Saving the token menu with blank HP fields must leave hp_current/hp_max as
+    None, not silently coerce to 0. The menu always submits both fields (empty
+    string when the token has no HP tracked), so a naive `_int_or(value, 0)`
+    would zero out HP on every save of an HP-less token."""
+    client = TestClient(create_app())
+    mid, tid = _token(client)
+
+    client.post(f"/token/{tid}", data={"hp_current": "", "hp_max": ""})
+    t = client.get(f"/map/{mid}/state").json()["tokens"][0]
+    assert t["hp_current"] is None
+    assert t["hp_max"] is None
+
+
 def test_absent_checkbox_field_leaves_flag_untouched():
     """Omitting the field should leave flag unchanged (absent = untouched)."""
     client = TestClient(create_app())

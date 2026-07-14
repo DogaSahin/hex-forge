@@ -495,7 +495,10 @@ async def edit_token(
         if hp_max is not None:
             t.hp_max = _int_or_none(hp_max)
         if hp_current is not None:
-            t.hp_current = clamp_hp(_int_or(hp_current, 0), t.hp_max)
+            parsed_hp_current = _int_or_none(hp_current)
+            t.hp_current = (
+                None if parsed_hp_current is None else clamp_hp(parsed_hp_current, t.hp_max)
+            )
         if hp_visible_to_players is not None:
             t.hp_visible_to_players = bool(hp_visible_to_players)
         db.commit()
