@@ -158,3 +158,24 @@ body.app {
 .wiki-tags { margin-top: 1rem; display: flex; gap: var(--gap-2); flex-wrap: wrap; align-items: center; }
 .chip-x { background: none; border: none; cursor: pointer; color: inherit; padding: 0 0 0 4px; font: inherit; }
 .tag-add { display: flex; gap: var(--gap-2); align-items: center; }
+
+/* Dashboard (Epic 9) */
+.dash-title { margin-bottom: var(--gap-3); }
+.metric-row { display: flex; gap: var(--gap-3); margin-bottom: var(--gap-3); flex-wrap: wrap; }
+.metric {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: var(--gap-2) var(--gap-3);
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px;
+  min-width: 120px; text-decoration: none; color: inherit;
+}
+.metric-value { font-size: 1.5rem; font-weight: 600; color: var(--warning); }
+.metric-label { font-size: 0.8rem; color: var(--text-muted); }
+.dash-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-3);
+}
+.dash-span-2 { grid-column: span 2; }
+.dash-card-title { font-size: 1rem; margin-bottom: var(--gap-2); }
+.dash-link { color: var(--text-default); text-decoration: none; font-weight: 500; }
+.dash-link:hover { color: var(--warning); }
+/* Clocks on the dashboard are read-only mirrors of the faction screen. */
+.dash-card .clock-seg { cursor: default; }
