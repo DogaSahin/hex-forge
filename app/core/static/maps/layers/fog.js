@@ -2,6 +2,13 @@
 // Base map state is fully fogged; each op punches a hole (reveal) or re-fogs (hide).
 // Two-surface: DM sees fog at ~50% opacity (can see the whole map while knowing
 // what's hidden); the player sees it fully opaque.
+//
+// The dimming must NOT be Konva node opacity: Konva applies a Group/Layer's
+// opacity per-shape, so the destination-out "reveal" shapes would themselves
+// draw at that alpha and only ever remove half the fog. Instead we render fog
+// + reveals at full opacity onto the layer's canvas, then dim the canvas
+// element itself (a plain CSS-style opacity on the <canvas>), which affects
+// the already-composited pixels uniformly.
 export function createFogLayer(ctx) {
   const layer = new Konva.Layer({ listening: false });
   const opaque = ctx.mode === "player";
@@ -53,8 +60,9 @@ export function createFogLayer(ctx) {
           );
         }
       });
-      layer.opacity(opaque ? 1.0 : 0.5);
       layer.draw();
+      const c = layer.getCanvas() && layer.getCanvas()._canvas;
+      if (c) c.style.opacity = opaque ? "1" : "0.5";
     },
     update() {},
     destroy() {
