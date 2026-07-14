@@ -1,6 +1,6 @@
 function tokenNode(t, gridSize) {
   const px = (t.size || 1) * gridSize;
-  const group = new Konva.Group({ x: t.x, y: t.y, draggable: true, id: `tok-${t.id}` });
+  const group = new Konva.Group({ x: t.x, y: t.y, draggable: false, id: `tok-${t.id}` });
   group.setAttr("tokenId", t.id);
   if (t.kind === "image" && t.image_path) {
     const img = new Image();
@@ -31,6 +31,10 @@ export function createTokensLayer(ctx) {
       layer.destroyChildren();
       gridSize = (state.map && state.map.grid_size_px) || 70;
       (state.tokens || []).forEach((t) => layer.add(tokenNode(t, gridSize)));
+      // Read-only surfaces (player) must not even hit-test tokens: no drag, no
+      // dblclick-to-menu. Tokens are recreated every render(), so this must be
+      // re-applied here rather than set once at layer creation.
+      layer.listening(ctx.mode === "dm");
       layer.draw();
       if (api.onLayerReady) api.onLayerReady(layer, gridSize);
     },
@@ -41,7 +45,9 @@ export function createTokensLayer(ctx) {
     },
     setDraggable(draggable) {
       // Applies to all token Groups currently on the layer. Tokens are recreated on every
-      // render(), so callers must re-apply this after each render()/refresh().
+      // render(), so callers must re-apply this after each render()/refresh(). DM-mode-only
+      // caller (map.js); the player surface never calls this, and the layer isn't even
+      // listening there, so tokens stay inert regardless.
       layer.getChildren().forEach((group) => group.draggable(!!draggable));
     },
     destroy() { layer.destroy(); },
