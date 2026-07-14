@@ -59,8 +59,8 @@
       delete host.dataset.mounted;
       host.style.display = "block";
       host.dataset.mapId = mapId;
-      // Player-only, always: no data-dm-topic is ever set here, so map.js can never
-      // reach the dm-only topic from this surface (the two-surface boundary).
+      // Player-only, always: the dm-only topic attribute is never set here, so map.js
+      // can never reach the dm-only topic from this surface (the two-surface boundary).
       host.dataset.mode = "player";
       // No subscribe call here: mountEditor (below) calls HexWS.connect("map:"+mapId),
       // which already opens/subscribes that topic on the single shared socket. An extra
