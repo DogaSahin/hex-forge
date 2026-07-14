@@ -24,6 +24,7 @@ def project_tokens(tokens: list[Token]) -> list[dict]:
             "y": t.y,
             "size": t.size,
             "color": t.color,
+            "kind": t.kind,
             "image_path": t.image_path,
             "name": t.name,
             "layer": "tokens",

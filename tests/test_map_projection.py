@@ -72,10 +72,26 @@ def test_visible_token_included_with_expected_fields():
         "y": 210,
         "size": 2,
         "color": "#abc123",
+        "kind": "disc",
         "image_path": "tokens/hero.png",
         "name": "Hero",
         "layer": "tokens",
     }
+
+
+def test_image_token_projects_kind_and_image_path():
+    tokens = [
+        _tok(
+            id=8,
+            name="Art",
+            kind="image",
+            image_path="tokens/art.png",
+        )
+    ]
+    out = project_tokens(tokens)
+    assert len(out) == 1
+    assert out[0]["kind"] == "image"
+    assert out[0]["image_path"] == "tokens/art.png"
 
 
 def test_no_hp_numbers_leak():
