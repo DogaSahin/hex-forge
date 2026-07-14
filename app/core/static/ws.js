@@ -4,6 +4,11 @@
   let socket = null;
 
   function connect(topic) {
+    // Each mount (map/encounter) calls connect() again; without closing the
+    // prior socket first, every remount leaks an open WebSocket.
+    if (socket && socket.readyState !== WebSocket.CLOSING && socket.readyState !== WebSocket.CLOSED) {
+      socket.close();
+    }
     const proto = location.protocol === "https:" ? "wss" : "ws";
     const url = `${proto}://${location.host}/ws?topic=${encodeURIComponent(topic || "broadcast")}`;
     socket = new WebSocket(url);
