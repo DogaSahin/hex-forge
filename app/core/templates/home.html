@@ -3,6 +3,7 @@
 {% block content %}
   <h1 class="dash-title">{{ active_campaign.name if active_campaign else "Hexforge" }}</h1>
 
+  {% if metrics %}
   <div class="metric-row">
     {% for m in metrics %}
       {% if m.href %}
@@ -18,6 +19,7 @@
       {% endif %}
     {% endfor %}
   </div>
+  {% endif %}
 
   <div class="dash-grid">
     {% for card in cards %}

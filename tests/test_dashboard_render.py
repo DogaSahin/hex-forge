@@ -68,3 +68,38 @@ def test_home_still_renders_with_no_cards_registered():
     resp = client.get("/")
     assert resp.status_code == 200
     assert 'id="nav-rail"' in resp.text
+
+
+def test_home_omits_metric_row_when_no_metrics_registered():
+    # Modules already contribute metrics by default, so force the no-metrics
+    # case directly to prove the empty metric-row div doesn't render at all.
+    app = create_app()
+    app.state.registry.metric_providers = []
+    client = TestClient(app)
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert "metric-row" not in resp.text
+
+
+def test_home_renders_metric_row_when_a_metric_is_registered():
+    app = create_app()
+    app.state.registry.add_dashboard_metric(
+        lambda db, cid: [Metric(label="Plan-Test Metric", value="1")]
+    )
+    client = TestClient(app)
+    resp = client.get("/")
+    assert "metric-row" in resp.text
+    assert "Plan-Test Metric" in resp.text
+
+
+def test_home_shows_card_unavailable_placeholder_when_a_card_raises():
+    # A broken module's card must not 500 the home page — the page renders with a
+    # "Card unavailable." placeholder in that card's slot instead.
+    app = create_app()
+    app.state.registry.add_dashboard_card(
+        DashboardCard(key="test.boom", title="Plan-Test Boom Card", render=_boom)
+    )
+    client = TestClient(app)
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert "Card unavailable." in resp.text

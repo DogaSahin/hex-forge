@@ -147,3 +147,44 @@ def test_log_append_refused_for_another_campaigns_session():
         db.commit()
     finally:
         db.close()
+
+
+def test_log_resolve_unresolve_delete_refused_for_another_campaigns_line():
+    sid = _make_session("Plan-Test Owned Line Mutations Session")
+    client.post(f"/sessions/{sid}/log", data={"text": "guard this thread line", "tag": "thread"})
+    lid = _log_id("guard this thread line")
+    client.post(f"/sessions/log/{lid}/resolve")
+    assert _resolved_at(lid) is not None  # resolved by the owning campaign
+
+    db = SessionLocal()
+    try:
+        other = Campaign(name="Plan-Test Other Line Mutations Campaign")
+        db.add(other)
+        db.commit()
+        other_id = other.id
+    finally:
+        db.close()
+
+    other_client = TestClient(create_app())
+    other_client.cookies.set("hexforge_campaign_id", str(other_id))
+
+    other_client.post(f"/sessions/log/{lid}/unresolve")
+    assert _resolved_at(lid) is not None  # no-op: not this campaign's line
+
+    other_client.post(f"/sessions/log/{lid}/resolve")
+    assert _resolved_at(lid) is not None  # still just the original resolve
+
+    other_client.post(f"/sessions/log/{lid}/delete")
+    db = SessionLocal()
+    try:
+        assert db.get(SessionLog, lid) is not None  # not deleted
+    finally:
+        db.close()
+
+    client.post(f"/sessions/{sid}/delete")
+    db = SessionLocal()
+    try:
+        db.delete(db.get(Campaign, other_id))
+        db.commit()
+    finally:
+        db.close()
