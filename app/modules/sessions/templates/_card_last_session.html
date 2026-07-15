@@ -1,0 +1,13 @@
+{% if session %}
+  <p>
+    <a class="dash-link" href="/sessions">#{{ session.number }} — {{ session.title }}</a>
+    <span class="muted">{{ session.date.isoformat() }}</span>
+  </p>
+  {% if excerpt %}
+    <p class="log-text">{{ excerpt }}</p>
+  {% else %}
+    <p class="muted">No summary written.</p>
+  {% endif %}
+{% else %}
+  <p class="muted">No completed session yet.</p>
+{% endif %}

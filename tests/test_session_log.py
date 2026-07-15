@@ -106,6 +106,18 @@ def test_delete_log_line():
     client.post(f"/sessions/{sid}/delete")
 
 
+def test_resolve_is_a_no_op_for_a_non_thread_line():
+    sid = _make_session("Plan-Test Non Thread Resolve Session")
+    client.post(f"/sessions/{sid}/log", data={"text": "just a combat note", "tag": "combat"})
+    lid = _log_id("just a combat note")
+    assert _resolved_at(lid) is None
+
+    client.post(f"/sessions/log/{lid}/resolve")
+    assert _resolved_at(lid) is None  # not a thread line — resolve is a no-op
+
+    client.post(f"/sessions/{sid}/delete")
+
+
 def test_log_append_refused_for_another_campaigns_session():
     sid = _make_session("Plan-Test Owned Session")
     db = SessionLocal()

@@ -12,8 +12,8 @@ from app.core.campaigns import get_active_campaign
 from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
-from app.modules.sessions import services
-from app.modules.sessions.models import DEFAULT_TAG, TAGS, GameSession, SessionLog
+from app.modules.sessions import dashboard, services
+from app.modules.sessions.models import DEFAULT_TAG, TAGS, THREAD_TAG, GameSession, SessionLog
 from app.modules.sessions.recap import TAG_HEADINGS, compile_recap
 
 MODULE_DIR = Path(__file__).resolve().parent
@@ -260,11 +260,6 @@ def unresolve_thread(
 
 
 def _threads_card_fragment(request: Request, db: Session, campaign_id: int) -> HTMLResponse:
-    # Deferred import: app.modules.sessions.dashboard doesn't exist until Task 7.
-    # A module-level import here would break the whole `sessions` module today.
-    # Task 7 hoists this to a top-of-file import once dashboard.py lands.
-    from app.modules.sessions import dashboard  # noqa: PLC0415
-
     return HTMLResponse(dashboard.render_threads_card(db, campaign_id))
 
 
@@ -278,13 +273,13 @@ def _set_resolved(
 ) -> HTMLResponse:
     log = services.owned_log(db, log_id, campaign.id)
     row = log.session if log is not None else None
-    if log is not None:
+    if log is not None and log.tag == THREAD_TAG:
         log.resolved_at = value
         db.commit()
         if row is not None:
             db.refresh(row)
     if view == "card":
         # Fired from the dashboard's open-threads card, which needs its own
-        # fragment back rather than the session page's feed. Wired up in Task 7.
+        # fragment back rather than the session page's feed.
         return _threads_card_fragment(request, db, campaign.id)
     return _feed(request, row)
