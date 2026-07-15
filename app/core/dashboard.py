@@ -25,6 +25,8 @@ def render_cards(registry: Registry, db: Session | None, campaign_id: int) -> li
             failed = False
         except Exception:
             logger.exception("dashboard card %s failed to render", card.key)
+            if db is not None:
+                db.rollback()
             html = ""
             failed = True
         rendered.append(
@@ -46,4 +48,6 @@ def collect_metrics(registry: Registry, db: Session | None, campaign_id: int) ->
             metrics.extend(provider(db, campaign_id))
         except Exception:
             logger.exception("dashboard metric provider failed")
+            if db is not None:
+                db.rollback()
     return sorted(metrics, key=lambda m: m.order)

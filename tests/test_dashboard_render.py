@@ -9,6 +9,14 @@ def _boom(db, campaign_id):
     raise RuntimeError("card exploded")
 
 
+class _RollbackSpy:
+    def __init__(self):
+        self.rolled_back = 0
+
+    def rollback(self):
+        self.rolled_back += 1
+
+
 def test_render_cards_returns_html_in_order():
     reg = Registry()
     reg.add_dashboard_card(
@@ -90,6 +98,35 @@ def test_home_renders_metric_row_when_a_metric_is_registered():
     resp = client.get("/")
     assert "metric-row" in resp.text
     assert "Plan-Test Metric" in resp.text
+
+
+def test_render_cards_rolls_back_db_after_a_failing_card_so_siblings_still_work():
+    # A card that raises a DB-style error leaves a shared SQLAlchemy session in a
+    # "needs rollback" state. Without a rollback in the except handler, every
+    # subsequent card that touches the same session would also fail — defeating
+    # sibling isolation. Prove render_cards rolls back after the failure.
+    reg = Registry()
+    reg.add_dashboard_card(DashboardCard(key="bad", title="Bad", render=_boom, order=100))
+    reg.add_dashboard_card(
+        DashboardCard(key="good", title="Good", render=lambda db, cid: "<p>fine</p>", order=200)
+    )
+    spy = _RollbackSpy()
+    cards = render_cards(reg, db=spy, campaign_id=1)
+    bad, good = cards[0], cards[1]
+    assert bad["failed"] is True
+    assert good["failed"] is False
+    assert good["html"] == "<p>fine</p>"
+    assert spy.rolled_back == 1
+
+
+def test_collect_metrics_rolls_back_db_after_a_failing_provider_so_siblings_still_work():
+    reg = Registry()
+    reg.add_dashboard_metric(_boom)
+    reg.add_dashboard_metric(lambda db, cid: [Metric(label="Good", value="1", order=100)])
+    spy = _RollbackSpy()
+    metrics = collect_metrics(reg, db=spy, campaign_id=1)
+    assert [m.label for m in metrics] == ["Good"]
+    assert spy.rolled_back == 1
 
 
 def test_home_shows_card_unavailable_placeholder_when_a_card_raises():

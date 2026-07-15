@@ -1,3 +1,5 @@
+import pytest
+
 from app.core.registry import DashboardCard, Metric, Registry
 
 
@@ -38,3 +40,17 @@ def test_registry_starts_with_no_cards_or_metrics():
     reg = Registry()
     assert reg.dashboard_cards() == []
     assert reg.metric_providers == []
+
+
+def test_add_dashboard_card_rejects_duplicate_key():
+    reg = Registry()
+    reg.add_dashboard_card(DashboardCard(key="dup", title="First", render=lambda db, cid: ""))
+    with pytest.raises(ValueError):
+        reg.add_dashboard_card(DashboardCard(key="dup", title="Second", render=lambda db, cid: ""))
+
+
+def test_add_dashboard_card_allows_distinct_keys():
+    reg = Registry()
+    reg.add_dashboard_card(DashboardCard(key="one", title="One", render=lambda db, cid: ""))
+    reg.add_dashboard_card(DashboardCard(key="two", title="Two", render=lambda db, cid: ""))
+    assert [c.key for c in reg.dashboard_cards()] == ["one", "two"]

@@ -101,6 +101,8 @@ class Registry:
         return targets
 
     def add_dashboard_card(self, card: DashboardCard) -> None:
+        if any(existing.key == card.key for existing in self.cards):
+            raise ValueError(f"duplicate dashboard card key: {card.key!r}")
         self.cards.append(card)
 
     def dashboard_cards(self) -> list[DashboardCard]:
