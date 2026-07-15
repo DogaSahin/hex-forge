@@ -1,0 +1,22 @@
+<div id="session-recap">
+  {% if session %}
+  <form class="recap-tags" hx-post="/sessions/{{ session.id }}/recap"
+        hx-target="#session-recap" hx-swap="outerHTML">
+    {% for tag, heading in headings %}
+      <label class="chip">
+        <input type="checkbox" name="tags" value="{{ tag }}" checked> {{ heading }}
+      </label>
+    {% endfor %}
+    <button class="btn" type="submit">Compile recap</button>
+  </form>
+
+  {% if recap %}
+    <pre class="recap-preview">{{ recap }}</pre>
+    <form hx-post="/sessions/{{ session.id }}/recap/apply"
+          hx-target="#session-summary" hx-swap="outerHTML">
+      <input type="hidden" name="recap" value="{{ recap }}">
+      <button class="btn btn-primary" type="submit">Use as summary</button>
+    </form>
+  {% endif %}
+  {% endif %}
+</div>

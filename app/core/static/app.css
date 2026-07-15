@@ -184,3 +184,10 @@ body.app {
 .log-add { display: flex; gap: var(--gap-2); margin-bottom: var(--gap-2); }
 .log-row { gap: var(--gap-2); }
 .log-text.is-resolved { text-decoration: line-through; color: var(--text-muted); }
+
+/* ---- Session summary + recap (Epic 9, task 9.8-9.9) ---- */
+.recap-tags { display: flex; gap: var(--gap-2); align-items: center; margin-bottom: var(--gap-2); flex-wrap: wrap; }
+.recap-preview {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px;
+  padding: var(--gap-2); white-space: pre-wrap; margin-bottom: var(--gap-2);
+}

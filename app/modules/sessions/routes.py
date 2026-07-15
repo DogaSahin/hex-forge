@@ -14,6 +14,7 @@ from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
 from app.modules.sessions import services
 from app.modules.sessions.models import DEFAULT_TAG, TAGS, GameSession, SessionLog
+from app.modules.sessions.recap import TAG_HEADINGS, compile_recap
 
 MODULE_DIR = Path(__file__).resolve().parent
 templates = module_templates(MODULE_DIR)
@@ -81,7 +82,13 @@ def detail(
     campaign: Campaign = Depends(get_active_campaign),
 ) -> HTMLResponse:
     return templates.TemplateResponse(
-        request, "_detail.html", {"session": services.owned(db, session_id, campaign.id)}
+        request,
+        "_detail.html",
+        {
+            "session": services.owned(db, session_id, campaign.id),
+            "headings": TAG_HEADINGS,
+            "recap": "",
+        },
     )
 
 
@@ -111,7 +118,9 @@ def update(
         row.title = title.strip()
         row.date = _parse_date(date)
         db.commit()
-    return templates.TemplateResponse(request, "_detail.html", {"session": row})
+    return templates.TemplateResponse(
+        request, "_detail.html", {"session": row, "headings": TAG_HEADINGS, "recap": ""}
+    )
 
 
 @router.post("/{session_id}/delete", response_class=HTMLResponse)
@@ -140,7 +149,9 @@ def activate(
     row = services.owned(db, session_id, campaign.id)
     if row is not None:
         services.activate(db, row)
-    return templates.TemplateResponse(request, "_detail.html", {"session": row})
+    return templates.TemplateResponse(
+        request, "_detail.html", {"session": row, "headings": TAG_HEADINGS, "recap": ""}
+    )
 
 
 def _feed(request: Request, session_row: GameSession | None) -> HTMLResponse:
@@ -162,6 +173,51 @@ def append_log(
         db.commit()
         db.refresh(row)
     return _feed(request, row)
+
+
+@router.post("/{session_id}/summary", response_class=HTMLResponse)
+def edit_summary(
+    request: Request,
+    session_id: int,
+    summary: str = Form(""),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    row = services.owned(db, session_id, campaign.id)
+    if row is not None:
+        row.summary = summary.strip() or None
+        db.commit()
+    return templates.TemplateResponse(request, "_summary.html", {"session": row})
+
+
+@router.post("/{session_id}/recap", response_class=HTMLResponse)
+def compile_session_recap(
+    request: Request,
+    session_id: int,
+    tags: list[str] = Form(default=[]),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    row = services.owned(db, session_id, campaign.id)
+    text = compile_recap(row.logs, set(tags)) if row is not None else ""
+    return templates.TemplateResponse(
+        request, "_recap.html", {"session": row, "recap": text, "headings": TAG_HEADINGS}
+    )
+
+
+@router.post("/{session_id}/recap/apply", response_class=HTMLResponse)
+def apply_recap(
+    request: Request,
+    session_id: int,
+    recap: str = Form(""),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    row = services.owned(db, session_id, campaign.id)
+    if row is not None and recap.strip():
+        row.summary = recap.strip()
+        db.commit()
+    return templates.TemplateResponse(request, "_summary.html", {"session": row})
 
 
 @router.post("/log/{log_id}/delete", response_class=HTMLResponse)
