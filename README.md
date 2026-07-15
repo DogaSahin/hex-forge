@@ -15,6 +15,18 @@ Early and actively built. Working today:
 - **App shell** — a persistent navigation rail, a campaign switcher (all data is scoped to the active
   campaign), a built-in design-system reference page, and a keyboard command palette (Ctrl-K) for quick
   search and navigation.
+- **Dashboard** (`/`) — the home page for the active campaign: a metric row up top (current session,
+  open threads, active clocks) over a grid of cards — recent faction moves, clocks nearing completion,
+  open threads across your sessions, and the last session's summary — so you can see where the campaign
+  stands at a glance before you start prepping. A card that can't render shows a quiet placeholder
+  instead of breaking the page.
+- **Sessions** (`/sessions`) — a numbered log of your games, one active at a time:
+  - a **timestamped log** you type into during play, each line tagged combat / roleplay / loot /
+    thread, newest first;
+  - **threads** — tag a line as a thread and resolve or reopen it later as loose ends get tied up;
+  - a per-session **summary** you write up after the fact;
+  - **compile recap** turns the tags you pick into a markdown write-up you can drop straight into the
+    summary instead of writing it from scratch.
 - **Dice Roller** (`/dice`) — roll standard dice notation and see a per-die breakdown:
   - terms and modifiers like `2d6+1d8+3`, keep/drop highest & lowest (`4d6kh3`, `2d20kl1`),
     advantage/disadvantage (`1d20adv` / `1d20dis`), exploding dice (`3d6!`), and reroll (`4d6r1`);
