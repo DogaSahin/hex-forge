@@ -13,4 +13,9 @@
             hx-confirm="Delete this session?">Delete</button>
   </div>
   <p class="muted">{{ session.date.isoformat() }}</p>
+
+  <section class="card">
+    <h3>Log</h3>
+    {% include "_log_feed.html" %}
+  </section>
 {% endif %}

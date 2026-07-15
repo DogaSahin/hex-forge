@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from datetime import date as date_type
-from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -13,7 +13,7 @@ from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.templating import module_templates, shell_context
 from app.modules.sessions import services
-from app.modules.sessions.models import GameSession
+from app.modules.sessions.models import DEFAULT_TAG, TAGS, GameSession, SessionLog
 
 MODULE_DIR = Path(__file__).resolve().parent
 templates = module_templates(MODULE_DIR)
@@ -26,6 +26,10 @@ def _parse_date(raw: str) -> date_type:
         return datetime.strptime(raw, "%Y-%m-%d").date()
     except (ValueError, TypeError):
         return date_type.today()
+
+
+def _clean_tag(value: str | None) -> str:
+    return value if value in TAGS else DEFAULT_TAG
 
 
 @router.get("", response_class=HTMLResponse)
@@ -137,3 +141,94 @@ def activate(
     if row is not None:
         services.activate(db, row)
     return templates.TemplateResponse(request, "_detail.html", {"session": row})
+
+
+def _feed(request: Request, session_row: GameSession | None) -> HTMLResponse:
+    return templates.TemplateResponse(request, "_log_feed.html", {"session": session_row})
+
+
+@router.post("/{session_id}/log", response_class=HTMLResponse)
+def append_log(
+    request: Request,
+    session_id: int,
+    text: str = Form(...),
+    tag: str = Form(DEFAULT_TAG),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    row = services.owned(db, session_id, campaign.id)
+    if row is not None and text.strip():
+        row.logs.append(SessionLog(text=text.strip(), tag=_clean_tag(tag)))
+        db.commit()
+        db.refresh(row)
+    return _feed(request, row)
+
+
+@router.post("/log/{log_id}/delete", response_class=HTMLResponse)
+def delete_log(
+    request: Request,
+    log_id: int,
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    log = services.owned_log(db, log_id, campaign.id)
+    row = log.session if log is not None else None
+    if log is not None:
+        db.delete(log)
+        db.commit()
+        if row is not None:
+            db.refresh(row)
+    return _feed(request, row)
+
+
+@router.post("/log/{log_id}/resolve", response_class=HTMLResponse)
+def resolve_thread(
+    request: Request,
+    log_id: int,
+    view: str = Form("feed"),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    return _set_resolved(request, log_id, datetime.now(UTC), view, db, campaign)
+
+
+@router.post("/log/{log_id}/unresolve", response_class=HTMLResponse)
+def unresolve_thread(
+    request: Request,
+    log_id: int,
+    view: str = Form("feed"),
+    db: Session = Depends(get_db),
+    campaign: Campaign = Depends(get_active_campaign),
+) -> HTMLResponse:
+    return _set_resolved(request, log_id, None, view, db, campaign)
+
+
+def _threads_card_fragment(request: Request, db: Session, campaign_id: int) -> HTMLResponse:
+    # Deferred import: app.modules.sessions.dashboard doesn't exist until Task 7.
+    # A module-level import here would break the whole `sessions` module today.
+    # Task 7 hoists this to a top-of-file import once dashboard.py lands.
+    from app.modules.sessions import dashboard  # noqa: PLC0415
+
+    return HTMLResponse(dashboard.render_threads_card(db, campaign_id))
+
+
+def _set_resolved(
+    request: Request,
+    log_id: int,
+    value: datetime | None,
+    view: str,
+    db: Session,
+    campaign: Campaign,
+) -> HTMLResponse:
+    log = services.owned_log(db, log_id, campaign.id)
+    row = log.session if log is not None else None
+    if log is not None:
+        log.resolved_at = value
+        db.commit()
+        if row is not None:
+            db.refresh(row)
+    if view == "card":
+        # Fired from the dashboard's open-threads card, which needs its own
+        # fragment back rather than the session page's feed. Wired up in Task 7.
+        return _threads_card_fragment(request, db, campaign.id)
+    return _feed(request, row)

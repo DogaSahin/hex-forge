@@ -179,3 +179,8 @@ body.app {
 .dash-link:hover { color: var(--warning); }
 /* Clocks on the dashboard are read-only mirrors of the faction screen. */
 .dash-card .clock-seg { cursor: default; }
+
+/* ---- Session log (Epic 9, task 9.5-9.7) ---- */
+.log-add { display: flex; gap: var(--gap-2); margin-bottom: var(--gap-2); }
+.log-row { gap: var(--gap-2); }
+.log-text.is-resolved { text-decoration: line-through; color: var(--text-muted); }
