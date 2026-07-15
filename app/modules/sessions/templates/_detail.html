@@ -1,0 +1,16 @@
+{% if not session %}
+  <p class="muted">Select a session.</p>
+{% else %}
+  <div class="detail-head">
+    <h2>#{{ session.number }} — {{ session.title }}</h2>
+    <span class="chip">{{ session.status }}</span>
+    {% if session.status != 'active' %}
+      <button class="btn btn-primary" hx-post="/sessions/{{ session.id }}/activate"
+              hx-target="#session-detail" hx-swap="innerHTML">Make active</button>
+    {% endif %}
+    <button class="btn" hx-get="/sessions/{{ session.id }}/edit" hx-target="#session-detail" hx-swap="innerHTML">Edit</button>
+    <button class="btn" hx-post="/sessions/{{ session.id }}/delete" hx-target="#session-list" hx-swap="outerHTML"
+            hx-confirm="Delete this session?">Delete</button>
+  </div>
+  <p class="muted">{{ session.date.isoformat() }}</p>
+{% endif %}
