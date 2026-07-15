@@ -219,3 +219,7 @@ __marimo__/
 
 # Hexforge runtime state (SQLite DB + uploaded media) — never commit
 /data/
+
+# Vue / Vite frontend
+node_modules/
+app/core/static/dist/
