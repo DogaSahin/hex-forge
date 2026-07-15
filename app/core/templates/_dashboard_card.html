@@ -1,0 +1,10 @@
+{# Card chrome. The body comes from the owning module, already rendered. #}
+<section class="card dash-card{% if card.span > 1 %} dash-span-2{% endif %}"
+         id="dash-{{ card.key | replace('.', '-') }}">
+  <h2 class="dash-card-title">{{ card.title }}</h2>
+  {% if card.failed %}
+    <p class="muted">Card unavailable.</p>
+  {% else %}
+    {{ card.html | safe }}
+  {% endif %}
+</section>

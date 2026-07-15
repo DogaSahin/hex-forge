@@ -1,0 +1,14 @@
+{% set action = "/sessions/" ~ session.id if session else "/sessions" %}
+<form class="card"
+      hx-post="{{ action }}"
+      hx-target="{{ '#session-detail' if session else '#session-list' }}"
+      hx-swap="{{ 'innerHTML' if session else 'outerHTML' }}">
+  <label>Title
+    <input class="input" type="text" name="title" value="{{ session.title if session else '' }}" required>
+  </label>
+  <label>Date
+    <input class="input" type="date" name="date"
+           value="{{ session.date.isoformat() if session else '' }}">
+  </label>
+  <button class="btn btn-primary" type="submit">Save</button>
+</form>

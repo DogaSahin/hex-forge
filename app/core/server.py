@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core import config
 from app.core.campaigns import COOKIE_NAME, get_active_campaign
+from app.core.dashboard import collect_metrics, render_cards
 from app.core.database import get_db
 from app.core.models import Campaign
 from app.core.palette import search_index
@@ -47,8 +48,16 @@ def create_app() -> FastAPI:
     app.mount("/media", StaticFiles(directory=str(config.MEDIA_DIR)), name="media")
 
     @app.get("/", response_class=HTMLResponse)
-    def home(request: Request) -> HTMLResponse:
-        return templates.TemplateResponse(request, "home.html", shell_context(request))
+    def home(
+        request: Request,
+        db: Session = Depends(get_db),
+        campaign: Campaign = Depends(get_active_campaign),
+    ) -> HTMLResponse:
+        registry = request.app.state.registry
+        ctx = shell_context(request)
+        ctx["metrics"] = collect_metrics(registry, db, campaign.id)
+        ctx["cards"] = render_cards(registry, db, campaign.id)
+        return templates.TemplateResponse(request, "home.html", ctx)
 
     @app.get("/style", response_class=HTMLResponse)
     def style(request: Request) -> HTMLResponse:

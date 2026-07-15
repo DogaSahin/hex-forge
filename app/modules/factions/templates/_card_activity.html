@@ -1,0 +1,9 @@
+{% for item in rows %}
+  <div class="activity-row row">
+    <time>{{ item.occurred_at.strftime('%m-%d %H:%M') }}</time>
+    <a class="dash-link" href="/factions/{{ item.faction_id }}">{{ item.faction.name }}</a>
+    <span class="activity-entry">{{ item.entry }}</span>
+  </div>
+{% else %}
+  <p class="muted">No faction activity yet.</p>
+{% endfor %}

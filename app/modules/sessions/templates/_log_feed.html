@@ -1,0 +1,41 @@
+<div id="session-log-feed">
+  {% if session %}
+  <form class="log-add" hx-post="/sessions/{{ session.id }}/log"
+        hx-target="#session-log-feed" hx-swap="outerHTML"
+        x-data @htmx:after-request="$refs.line.value = ''">
+    <input class="input" type="text" name="text" x-ref="line"
+           placeholder="What just happened?" required>
+    <select class="input" name="tag">
+      <option value="none">—</option>
+      <option value="combat">Combat</option>
+      <option value="roleplay">Roleplay</option>
+      <option value="loot">Loot</option>
+      <option value="thread">Thread</option>
+    </select>
+    <button class="btn" type="submit">Log</button>
+  </form>
+  {% endif %}
+
+  {% for line in (session.logs if session else []) %}
+    <div class="log-row row">
+      <time>{{ line.logged_at.strftime('%H:%M') }}</time>
+      {% if line.tag != 'none' %}<span class="chip">{{ line.tag }}</span>{% endif %}
+      <span class="log-text{% if line.resolved_at %} is-resolved{% endif %}">{{ line.text }}</span>
+      {% if line.tag == 'thread' %}
+        {% if line.resolved_at %}
+          <button class="btn btn-icon" hx-post="/sessions/log/{{ line.id }}/unresolve"
+                  hx-target="#session-log-feed" hx-swap="outerHTML"
+                  title="Reopen thread">↺</button>
+        {% else %}
+          <button class="btn btn-icon" hx-post="/sessions/log/{{ line.id }}/resolve"
+                  hx-target="#session-log-feed" hx-swap="outerHTML"
+                  title="Resolve thread">✓</button>
+        {% endif %}
+      {% endif %}
+      <button class="btn btn-icon" hx-post="/sessions/log/{{ line.id }}/delete"
+              hx-target="#session-log-feed" hx-swap="outerHTML" title="Delete line">×</button>
+    </div>
+  {% else %}
+    <p class="muted">Nothing logged yet.</p>
+  {% endfor %}
+</div>

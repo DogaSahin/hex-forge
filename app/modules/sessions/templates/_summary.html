@@ -1,0 +1,10 @@
+<div id="session-summary">
+  {% if session %}
+  <form hx-post="/sessions/{{ session.id }}/summary"
+        hx-target="#session-summary" hx-swap="outerHTML">
+    <textarea class="input" name="summary" rows="6"
+              placeholder="What happened, in a paragraph.">{{ session.summary or '' }}</textarea>
+    <button class="btn" type="submit">Save summary</button>
+  </form>
+  {% endif %}
+</div>

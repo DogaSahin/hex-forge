@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Sessions — Hexforge{% endblock %}
+{% block content %}
+<section class="sessions two-pane">
+  <aside class="roster panel">
+    <div class="roster-head">
+      <h1>Sessions</h1>
+      <button class="btn btn-primary" hx-get="/sessions/new" hx-target="#session-detail" hx-swap="innerHTML">+ New</button>
+    </div>
+    {% include "_list.html" %}
+  </aside>
+
+  <section id="session-detail" class="detail card">
+    <p class="muted">Select a session.</p>
+  </section>
+</section>
+{% endblock %}

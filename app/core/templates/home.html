@@ -1,6 +1,31 @@
-{# app/core/templates/home.html #}
+{# app/core/templates/home.html — campaign dashboard #}
 {% extends "base.html" %}
 {% block content %}
-  <h1>Hexforge</h1>
-  <p>Shell is up. Modules register into the rail on the left.</p>
+  <h1 class="dash-title">{{ active_campaign.name if active_campaign else "Hexforge" }}</h1>
+
+  {% if metrics %}
+  <div class="metric-row">
+    {% for m in metrics %}
+      {% if m.href %}
+        <a class="metric" href="{{ m.href }}">
+          <span class="metric-value">{{ m.value }}</span>
+          <span class="metric-label">{{ m.label }}</span>
+        </a>
+      {% else %}
+        <div class="metric">
+          <span class="metric-value">{{ m.value }}</span>
+          <span class="metric-label">{{ m.label }}</span>
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="dash-grid">
+    {% for card in cards %}
+      {% include "_dashboard_card.html" %}
+    {% else %}
+      <p class="muted">No dashboard cards registered yet.</p>
+    {% endfor %}
+  </div>
 {% endblock %}

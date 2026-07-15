@@ -1,0 +1,14 @@
+<div id="threads-card-body">
+  {% for t in threads %}
+    <div class="log-row row">
+      <span class="log-text">{{ t.text }}</span>
+      <button class="btn btn-icon"
+              hx-post="/sessions/log/{{ t.id }}/resolve"
+              hx-vals='{"view": "card"}'
+              hx-target="#threads-card-body" hx-swap="outerHTML"
+              title="Resolve thread">✓</button>
+    </div>
+  {% else %}
+    <p class="muted">No open threads.</p>
+  {% endfor %}
+</div>

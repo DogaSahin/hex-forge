@@ -12,6 +12,8 @@ if TYPE_CHECKING:
 EntityProvider = Callable[["Session", int], "list[tuple[int, str]]"]
 DetailProvider = Callable[["Session", int, int], "dict | None"]
 JumpProvider = Callable[["Session", int], "list[dict]"]
+DashboardRender = Callable[["Session", int], str]
+MetricProvider = Callable[["Session", int], "list[Metric]"]
 
 
 @dataclass(frozen=True)
@@ -19,6 +21,30 @@ class NavItem:
     label: str
     icon: str
     url: str
+    order: int = 100
+
+
+@dataclass(frozen=True)
+class DashboardCard:
+    """A dashboard card contributed by a module.
+
+    `render` is a pure (db, campaign_id) -> HTML fragment. The module renders its
+    own template; core only supplies the surrounding card chrome. This is what lets
+    the dashboard aggregate across modules without core importing any of them.
+    """
+
+    key: str
+    title: str
+    render: DashboardRender
+    order: int = 100
+    span: int = 1
+
+
+@dataclass(frozen=True)
+class Metric:
+    label: str
+    value: str
+    href: str | None = None
     order: int = 100
 
 
@@ -30,6 +56,8 @@ class Registry:
     entity_providers: dict[str, EntityProvider] = field(default_factory=dict)
     entity_detail_providers: dict[str, DetailProvider] = field(default_factory=dict)
     jump_providers: dict[str, JumpProvider] = field(default_factory=dict)
+    cards: list[DashboardCard] = field(default_factory=list)
+    metric_providers: list[MetricProvider] = field(default_factory=list)
 
     def add_router(self, router: APIRouter) -> None:
         self.routers.append(router)
@@ -71,3 +99,14 @@ class Registry:
         for provider in self.jump_providers.values():
             targets.extend(provider(db, campaign_id))
         return targets
+
+    def add_dashboard_card(self, card: DashboardCard) -> None:
+        if any(existing.key == card.key for existing in self.cards):
+            raise ValueError(f"duplicate dashboard card key: {card.key!r}")
+        self.cards.append(card)
+
+    def dashboard_cards(self) -> list[DashboardCard]:
+        return sorted(self.cards, key=lambda c: c.order)
+
+    def add_dashboard_metric(self, provider: MetricProvider) -> None:
+        self.metric_providers.append(provider)
