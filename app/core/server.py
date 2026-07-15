@@ -17,6 +17,7 @@ from app.core.models import Campaign
 from app.core.palette import search_index
 from app.core.registry import Registry
 from app.core.templating import shell_context
+from app.core.vite_assets import register_vite_globals
 from app.core.websocket import manager
 from app.player.routes import router as player_router
 
@@ -25,6 +26,7 @@ STATIC_DIR = CORE_DIR / "static"
 TEMPLATES_DIR = CORE_DIR / "templates"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+register_vite_globals(templates)
 
 
 def build_registry() -> Registry:

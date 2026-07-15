@@ -50,3 +50,25 @@ def test_prod_mode_raises_when_entry_missing_from_manifest(tmp_path, monkeypatch
     monkeypatch.setattr(config, "VITE_DIST_DIR", dist)
     with pytest.raises(KeyError):
         vite_assets.vite_entry()
+
+
+def test_dm_shell_includes_vite_entry_in_dev(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app.core.server import create_app
+
+    monkeypatch.setattr(config, "VITE_DEV", True)
+    with TestClient(create_app()) as client:
+        html = client.get("/").text
+    assert "/@vite/client" in html
+
+
+def test_player_shell_includes_vite_entry_in_dev(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app.core.server import create_app
+
+    monkeypatch.setattr(config, "VITE_DEV", True)
+    with TestClient(create_app()) as client:
+        html = client.get("/player").text
+    assert "/@vite/client" in html

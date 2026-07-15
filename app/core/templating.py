@@ -9,6 +9,7 @@ from jinja2 import ChoiceLoader, FileSystemLoader
 from app.core.campaigns import get_active_campaign, list_campaigns
 from app.core.database import SessionLocal
 from app.core.registry import NavItem
+from app.core.vite_assets import register_vite_globals
 
 CORE_TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 
@@ -24,6 +25,7 @@ def module_templates(module_dir: Path) -> Jinja2Templates:
             FileSystemLoader(str(CORE_TEMPLATES_DIR)),
         ]
     )
+    register_vite_globals(tmpl)
     return tmpl
 
 
