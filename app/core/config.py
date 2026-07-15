@@ -34,6 +34,14 @@ ENABLED_MODULES: list[str] = [
 DEFAULT_GRID_SIZE_PX = 70
 DEFAULT_FEET_PER_SQUARE = 5
 
+# --- Vue/Vite island layer (see specs/vue-frontend-islands.md) ---
+# Entry module path — MUST match rollupOptions.input in vite.config.ts and the
+# manifest key it produces.
+VITE_ENTRY = "app/core/frontend/main.ts"
+VITE_DIST_DIR = BASE_DIR / "app" / "core" / "static" / "dist"
+VITE_DEV = os.environ.get("HEXFORGE_VITE_DEV", "").lower() in {"1", "true", "yes", "on"}
+VITE_DEV_SERVER_URL = os.environ.get("HEXFORGE_VITE_DEV_SERVER", "http://localhost:5173")
+
 
 def _ensure_dirs() -> None:
     for directory in (DATA_DIR, MEDIA_DIR, MAPS_DIR, TOKENS_DIR, PORTRAITS_DIR):
