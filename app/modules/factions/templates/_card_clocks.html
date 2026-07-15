@@ -1,0 +1,14 @@
+{% for clock in clocks %}
+  <div class="clock-item">
+    <div class="clock">
+      {% for i in range(clock.segments) %}
+        <span class="clock-seg{% if i < clock.filled %} is-filled{% endif %}"></span>
+      {% endfor %}
+    </div>
+    <a class="dash-link" href="/factions/{{ clock.faction_id }}">{{ clock.faction.name }}</a>
+    <span class="clock-name">{{ clock.name }}</span>
+    <span class="muted">{{ clock.filled }}/{{ clock.segments }}</span>
+  </div>
+{% else %}
+  <p class="muted">No clocks near completion.</p>
+{% endfor %}
