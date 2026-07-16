@@ -1,2 +1,7 @@
-// Island bootstrap entry. Wired to the mount runtime in a later task.
-export {}
+import { mountIslands } from './mount'
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => mountIslands())
+} else {
+  mountIslands()
+}

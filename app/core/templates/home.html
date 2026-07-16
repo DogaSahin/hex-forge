@@ -3,6 +3,11 @@
 {% block content %}
   <h1 class="dash-title">{{ active_campaign.name if active_campaign else "Hexforge" }}</h1>
 
+  <div
+    data-vue="hex-panel"
+    data-props='{"title": "Vue islands are live", "items": ["This panel is a Vue 3 component", "Click the header to collapse it", "Drop more components into any module's frontend/components/"]}'
+  ></div>
+
   {% if metrics %}
   <div class="metric-row">
     {% for m in metrics %}
