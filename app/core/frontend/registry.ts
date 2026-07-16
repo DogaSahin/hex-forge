@@ -19,5 +19,14 @@ function kebab(name: string): string {
 export const registry: Record<string, Component> = {}
 for (const path in modules) {
   const file = path.split('/').pop() ?? ''
-  registry[kebab(file)] = modules[path].default
+  const key = kebab(file)
+  // Two components resolving to the same key (e.g. same filename in core and a
+  // module, or in two modules) would otherwise clobber each other silently by
+  // glob order. Warn loudly rather than mount the wrong component.
+  if (key in registry) {
+    console.warn(
+      `[hexforge] duplicate Vue island name "${key}" — "${path}" overrides an earlier component`,
+    )
+  }
+  registry[key] = modules[path].default
 }
