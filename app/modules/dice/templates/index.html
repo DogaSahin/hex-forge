@@ -4,6 +4,8 @@
 <section class="dice">
   <h1>Dice</h1>
 
+  <div data-vue="dice-quick-roll" data-props='{"expr": "2d6+3"}'></div>
+
   <form class="dice-roll-form" hx-post="/dice/roll" hx-target="#dice-result" hx-swap="innerHTML">
     <input class="input" type="text" name="expression" placeholder="2d6+1d8+3" autocomplete="off" required>
     <button class="btn btn-primary" type="submit">Roll</button>
