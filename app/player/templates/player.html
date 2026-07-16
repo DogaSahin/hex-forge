@@ -38,6 +38,7 @@
 <body>
   <div id="stage"><div class="mirror-idle">Connecting…</div></div>
   <div id="player-map" style="display:none"></div>
+  <div id="player-vue" data-vue="hex-panel" data-props='{"title": "Player view", "items": ["This screen mirrors only shared state"]}'></div>
   <script>
   document.addEventListener("DOMContentLoaded", function () {
     var activeEnc; // undefined so the first refresh always runs loadMirror(), even

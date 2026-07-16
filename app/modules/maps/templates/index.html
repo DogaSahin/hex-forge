@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Maps · Hexforge{% endblock %}
 {% block content %}
+<div data-vue="hex-panel" data-props='{"title": "Maps — Vue island", "items": ["Placeholder panel", "Extend into a live map widget later"]}'></div>
 <div class="maps" x-data="{ selected: null }">
   <section class="maps-list">
     <form hx-post="/map" hx-target="#map-list" hx-swap="outerHTML" class="row-form">
