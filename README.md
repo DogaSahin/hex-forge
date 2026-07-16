@@ -91,6 +91,9 @@ Early and actively built. Working today:
 - **Backend:** FastAPI + Uvicorn (async, native WebSockets, single process)
 - **Data:** SQLAlchemy 2.x + SQLite, with Alembic migrations
 - **Frontend:** Jinja2 server-rendered fragments + HTMX + Alpine.js (minimal custom JS)
+- **Rich UI:** Vue 3 single-file components (TypeScript, bundled by Vite) mounted as *islands* onto the
+  server-rendered pages — an additive layer for component-heavy UI; HTMX/Alpine still drive everything
+  else. The runtime is unchanged (one Python process serving the built assets); Vite is a build-time tool
 - **Map canvas:** Konva.js (layered 2D rendering), vendored locally — like every other front-end
   dependency, so the app runs fully offline
 - **Images:** Pillow (reads the dimensions of uploaded maps and tokens)
@@ -113,9 +116,39 @@ open <http://localhost:8000/player>) in a second window for the read-only table 
 under `data/` (the SQLite database and uploaded media), which stays on your machine and out of version
 control.
 
+### Frontend (Vue islands)
+
+Rich UI is built with Vue 3 single-file components, bundled by Vite, and mounted as islands onto the
+server-rendered pages. Node 20+ is needed for the frontend build (not for the Python app itself).
+
+First-time setup (from the repo root):
+
+```bash
+npm install
+```
+
+For a production-style run, build the assets once and let uvicorn serve them from `/static/dist`:
+
+```bash
+npm run build
+.venv/Scripts/uvicorn main:app --port 8000
+```
+
+For frontend development, run the Vite dev server (hot-reload) alongside uvicorn:
+
+```bash
+npm run dev                                                      # Vite on :5173
+HEXFORGE_VITE_DEV=1 .venv/Scripts/uvicorn main:app --reload --port 8000
+```
+
+Editing a `.vue` component then hot-updates the browser without a full reload.
+
 ## Tests
 
 ```bash
+npm run lint                         # frontend lint (eslint)
+npm run format:check                 # frontend format check (prettier)
+npm run build                        # typecheck + bundle the Vue islands
 .venv/Scripts/ruff check .           # lint
 .venv/Scripts/ruff format --check .  # format check
 .venv/Scripts/pytest                 # tests
