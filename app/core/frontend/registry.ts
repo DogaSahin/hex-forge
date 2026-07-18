@@ -22,10 +22,12 @@ for (const path in modules) {
   const key = kebab(file)
   // Two components resolving to the same key (e.g. same filename in core and a
   // module, or in two modules) would otherwise clobber each other silently by
-  // glob order. Warn loudly rather than mount the wrong component.
+  // glob order. Island names are a single global namespace, so fail loudly rather
+  // than let a collision ship and mount the wrong component.
   if (key in registry) {
-    console.warn(
-      `[hexforge] duplicate Vue island name "${key}" — "${path}" overrides an earlier component`,
+    throw new Error(
+      `[hexforge] duplicate Vue island name "${key}": "${path}" collides with an ` +
+        `earlier component. Island names are global — rename one of the .vue files.`,
     )
   }
   registry[key] = modules[path].default
