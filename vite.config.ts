@@ -5,9 +5,12 @@ import { defineConfig } from 'vite'
 
 const root = fileURLToPath(new URL('.', import.meta.url))
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   root,
-  base: '/static/dist/',
+  // The dev server is its own origin (localhost:5173) and serves from root, which
+  // is what vite_assets._dev_tags() points at. The production build is served by
+  // uvicorn under /static/dist/, so the built assets carry that base.
+  base: command === 'serve' ? '/' : '/static/dist/',
   plugins: [vue()],
   server: {
     port: 5173,
@@ -23,4 +26,4 @@ export default defineConfig({
       input: { main: resolve(root, 'app/core/frontend/main.ts') },
     },
   },
-})
+}))
